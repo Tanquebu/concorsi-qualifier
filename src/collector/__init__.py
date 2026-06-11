@@ -36,7 +36,7 @@ def run_collector(
     n_duplicati = 0
 
     for source in sources:
-        fonte_nome: str = source.get("nome", source["url"])
+        fonte_nome: str = source.get("nome", source.get("url", ""))
         known = get_known_hashes(db_path, fonte_nome)
         try:
             nuovi = download_source(source, raw_dir, known)

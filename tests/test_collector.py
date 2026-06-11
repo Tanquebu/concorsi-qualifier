@@ -135,6 +135,100 @@ def test_run_collector_returns_collector_run(tmp_path: Path) -> None:
     assert isinstance(result, CollectorRun)
 
 
+# --- inpa_portal crawler ---
+
+def test_download_inpa_portal_mock(tmp_path: Path) -> None:
+    """Verifica che _download_inpa_portal salvi HTML + meta per ogni bando."""
+    from unittest.mock import MagicMock
+
+    from src.collector.crawler import _download_inpa_portal
+
+    fake_response = MagicMock()
+    fake_response.raise_for_status.return_value = None
+    fake_response.json.return_value = {
+        "content": [
+            {
+                "id": "abc123",
+                "titolo": "Concorso OSS 2026",
+                "entiRiferimento": ["ASL Torino"],
+                "sedi": ["Piemonte"],
+                "numPosti": 5,
+                "dataScadenza": "2026-12-31T00:00:00Z",
+                "dataPubblicazione": "2026-06-01T00:00:00Z",
+                "figuraRicercata": "OSS",
+                "tipoProcedura": "ESAMI",
+                "linkReindirizzamento": None,
+                "descrizione": "<p>Testo del bando</p>",
+                "descrizioneBreve": None,
+            }
+        ]
+    }
+
+    source = {"nome": "InPA Portale", "tipo": "inpa_portal", "per_page": "50"}
+    raw = tmp_path / "raw"
+
+    with patch("src.collector.crawler.httpx.post", return_value=fake_response):
+        nuovi = _download_inpa_portal(source, raw, set())
+
+    assert len(nuovi) == 1
+    html_files = list(raw.glob("*.html"))
+    meta_files = list(raw.glob("*.meta.json"))
+    assert len(html_files) == 1
+    assert len(meta_files) == 1
+
+    import json
+    meta = json.loads(meta_files[0].read_text())
+    assert meta["fonte"] == "InPA Portale"
+    assert meta["published"] == "2026-06-01"
+    assert "portale.inpa.gov.it" in meta["url"]
+
+    html_text = html_files[0].read_text()
+    assert "Concorso OSS 2026" in html_text
+    assert "ASL Torino" in html_text
+
+
+def test_download_inpa_portal_deduplicates(tmp_path: Path) -> None:
+    """Bando già noto non viene riscaricato."""
+    from unittest.mock import MagicMock
+
+    from src.collector.crawler import _download_inpa_portal
+    from src.collector.dedup import compute_hash
+
+    bando_id = "abc123"
+    pub_date = "2026-06-01"
+    canonical_url = f"https://portale.inpa.gov.it/concorso/{bando_id}"
+    existing_hash = compute_hash(canonical_url, pub_date)
+
+    fake_response = MagicMock()
+    fake_response.raise_for_status.return_value = None
+    fake_response.json.return_value = {
+        "content": [
+            {
+                "id": bando_id,
+                "titolo": "Concorso già visto",
+                "entiRiferimento": [],
+                "sedi": [],
+                "numPosti": 1,
+                "dataScadenza": "2026-12-31T00:00:00Z",
+                "dataPubblicazione": f"{pub_date}T00:00:00Z",
+                "figuraRicercata": "",
+                "tipoProcedura": "ESAMI",
+                "linkReindirizzamento": None,
+                "descrizione": "<p>già scaricato</p>",
+                "descrizioneBreve": None,
+            }
+        ]
+    }
+
+    source = {"nome": "InPA Portale", "tipo": "inpa_portal", "per_page": "50"}
+    raw = tmp_path / "raw"
+
+    with patch("src.collector.crawler.httpx.post", return_value=fake_response):
+        nuovi = _download_inpa_portal(source, raw, {existing_hash})
+
+    assert nuovi == []
+
+
 # --- fixture reale InPA ---
 
 _FIXTURE_HTML = Path(__file__).parent / "fixtures" / "collector" / "inpa_listing.html"

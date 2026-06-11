@@ -1,5 +1,10 @@
 sources:
-  - nome: InPA
+  - nome: InPA Portale
+    tipo: inpa_portal
+    per_page: 100
+    frequenza: daily
+
+  - nome: InPA Blog
     url: https://www.inpa.gov.it
     tipo: wordpress
     per_page: 50

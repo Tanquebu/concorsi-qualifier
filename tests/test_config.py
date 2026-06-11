@@ -15,10 +15,11 @@ def test_sources_yaml_loads() -> None:
     assert len(sources) >= 1
     for source in sources:
         assert "nome" in source
-        assert "url" in source
         assert "tipo" in source
-        assert source["tipo"] in ("html", "pdf", "wordpress")
+        assert source["tipo"] in ("html", "pdf", "wordpress", "inpa_portal")
         assert "frequenza" in source
+        if source["tipo"] not in ("inpa_portal",):
+            assert "url" in source
 
 
 def test_profilo_yaml_validates() -> None:
