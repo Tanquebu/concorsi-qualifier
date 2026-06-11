@@ -24,7 +24,7 @@ def _load_pairs(db_path: Path) -> list[tuple[MatchResult, Bando]]:
                       b.scadenza as _scadenza, b.area_geografica as _area_geografica,
                       b.posti as _posti, b.requisiti_formali as _req,
                       b.materie_esame as _materie, b.documenti_richiesti as _docs,
-                      b.extraction_confidence as _conf, b.tessa_concorso as _tassa,
+                      b.extraction_confidence as _conf, b.tassa_concorso as _tassa,
                       b.link_candidatura as _link, b.categoria as _cat,
                       b.titolo_studio_richiesto as _titolo_studio,
                       b.testo_raw as _testo_raw, b.status as _bstatus,

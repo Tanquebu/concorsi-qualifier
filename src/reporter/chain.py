@@ -1,7 +1,7 @@
 import os
 import re
 
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 
 from src.extractor.models import Bando
 from src.matcher.models import MatchResult

@@ -1,13 +1,18 @@
 sources:
   - nome: InPA
-    url: https://www.inpa.gov.it/bandi-e-avvisi/
-    tipo: html
+    url: https://www.inpa.gov.it
+    tipo: wordpress
+    per_page: 50
     frequenza: daily
+    exclude_keywords:
+      - manutenzione sul portale
+      - passaggio del portale
 
-  - nome: RIPAM
-    url: https://www.ripam.cloud/bandi/
-    tipo: html
-    frequenza: daily
+  # RIPAM è una SPA Angular — richiede Playwright per il rendering JS (TODO: S5)
+  # - nome: RIPAM
+  #   url: https://www.ripam.cloud/bandi/
+  #   tipo: html
+  #   frequenza: daily
 
   # Comune di Milano blocca i crawler (403) — commentato fino a soluzione
   # - nome: Comune di Milano

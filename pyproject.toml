@@ -13,6 +13,7 @@ dependencies = [
     # LLM orchestration
     "langchain>=0.3",
     "langchain-community>=0.3",
+    "langchain-ollama>=0.2",
     "langchain-openai>=0.2",       # per OpenRouter via base_url override
     # Data validation
     "pydantic>=2.7",

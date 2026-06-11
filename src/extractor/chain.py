@@ -14,7 +14,7 @@ def _get_llm() -> ChatOpenAI:
     return ChatOpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=api_key,
-        model=os.environ.get("OPENROUTER_MODEL", "mistralai/mistral-7b-instruct"),
+        model=os.environ.get("OPENROUTER_MODEL", "mistralai/mistral-small-3.2-24b-instruct"),
         temperature=0,
     )
 

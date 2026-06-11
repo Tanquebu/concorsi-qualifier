@@ -1,7 +1,9 @@
+import json
 from datetime import date
 from pathlib import Path
 
 import httpx
+from bs4 import BeautifulSoup
 
 from src.collector.dedup import compute_hash
 
@@ -11,7 +13,20 @@ def download_source(
     raw_dir: Path,
     known_hashes: set[str],
 ) -> list[str]:
-    """Scarica HTML o PDF da una fonte. Restituisce lista di hash nuovi scaricati."""
+    """Scarica bandi da una fonte. Restituisce lista di hash nuovi scaricati."""
+    tipo: str = source.get("tipo", "html")
+
+    if tipo == "wordpress":
+        return _download_wordpress(source, raw_dir, known_hashes)
+    else:
+        return _download_html_or_pdf(source, raw_dir, known_hashes)
+
+
+def _download_html_or_pdf(
+    source: dict[str, str],
+    raw_dir: Path,
+    known_hashes: set[str],
+) -> list[str]:
     url: str = source["url"]
     tipo: str = source.get("tipo", "html")
     today = str(date.today())
@@ -26,16 +41,72 @@ def download_source(
     response.raise_for_status()
 
     content_type = response.headers.get("content-type", "")
-    if "pdf" in content_type or tipo == "pdf":
-        ext = "pdf"
-    else:
-        ext = "html"
+    ext = "pdf" if ("pdf" in content_type or tipo == "pdf") else "html"
 
     dest = raw_dir / f"{file_hash}.{ext}"
     dest.write_bytes(response.content)
 
-    import json
     meta = {"url": url, "fonte": source.get("nome", ""), "ext": ext, "scraped_at": today}
     (raw_dir / f"{file_hash}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
 
     return [file_hash]
+
+
+def _download_wordpress(
+    source: dict[str, str],
+    raw_dir: Path,
+    known_hashes: set[str],
+) -> list[str]:
+    """Scarica bandi singoli via WordPress REST API."""
+    base_url: str = source["url"].rstrip("/")
+    fonte_nome: str = source.get("nome", "")
+    per_page: int = int(source.get("per_page", "50"))
+    today = str(date.today())
+
+    api_url = f"{base_url}/wp-json/wp/v2/posts"
+    params = {
+        "per_page": per_page,
+        "_fields": "id,title,link,date,content,categories",
+        "orderby": "date",
+        "order": "desc",
+    }
+
+    resp = httpx.get(api_url, params=params, timeout=30.0, follow_redirects=True)
+    resp.raise_for_status()
+    posts = resp.json()
+
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    nuovi: list[str] = []
+
+    exclude: list[str] = [kw.lower() for kw in source.get("exclude_keywords", [])]
+
+    for post in posts:
+        post_url: str = post["link"]
+        post_date: str = post["date"][:10]
+        file_hash = compute_hash(post_url, post_date)
+
+        if file_hash in known_hashes:
+            continue
+
+        title = BeautifulSoup(post["title"]["rendered"], "html.parser").get_text()
+
+        if exclude and any(kw in title.lower() for kw in exclude):
+            continue
+        body = post["content"]["rendered"]
+
+        html_content = f"<html><head><title>{title}</title></head><body>{body}</body></html>"
+        dest = raw_dir / f"{file_hash}.html"
+        dest.write_text(html_content, encoding="utf-8")
+
+        meta = {
+            "url": post_url,
+            "fonte": fonte_nome,
+            "ext": "html",
+            "scraped_at": today,
+            "title": title,
+            "published": post_date,
+        }
+        (raw_dir / f"{file_hash}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        nuovi.append(file_hash)
+
+    return nuovi

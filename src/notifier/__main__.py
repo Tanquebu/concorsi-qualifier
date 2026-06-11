@@ -71,10 +71,14 @@ def main() -> None:
     parser.add_argument(
         "--dry-run", action="store_true", help="Mostra il payload senza inviarlo"
     )
+    parser.add_argument(
+        "--all", action="store_true", help="Ignora filtro scadenza (utile per test/demo)"
+    )
     args = parser.parse_args()
 
     pairs = _load_pairs(args.db)
-    filtered = filter_bandi(pairs, days_ahead=args.days)
+    filtered = pairs if args.all else filter_bandi(pairs, days_ahead=args.days)
+    filtered = [(b, m) for b, m in filtered if m.compatibilita in ("alta", "media")]
 
     if not filtered:
         print("Nessun bando da notificare (compatibilità < media o scadenza fuori finestra).")

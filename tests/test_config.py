@@ -12,12 +12,12 @@ def test_sources_yaml_loads() -> None:
         data = yaml.safe_load(f)
     assert "sources" in data
     sources = data["sources"]
-    assert len(sources) >= 3
+    assert len(sources) >= 1
     for source in sources:
         assert "nome" in source
         assert "url" in source
         assert "tipo" in source
-        assert source["tipo"] in ("html", "pdf")
+        assert source["tipo"] in ("html", "pdf", "wordpress")
         assert "frequenza" in source
 
 

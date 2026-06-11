@@ -22,11 +22,11 @@ def extract(
     """Estrae un Bando dal testo e lo persiste in SQLite."""
     data, confidence = run_extraction(testo)
 
-    data.setdefault("titolo", "")
-    data.setdefault("ente", "")
-    data.setdefault("requisiti_formali", [])
-    data.setdefault("materie_esame", [])
-    data.setdefault("documenti_richiesti", [])
+    data["titolo"] = data.get("titolo") or ""
+    data["ente"] = data.get("ente") or ""
+    data["requisiti_formali"] = data.get("requisiti_formali") or []
+    data["materie_esame"] = data.get("materie_esame") or []
+    data["documenti_richiesti"] = data.get("documenti_richiesti") or []
 
     data["id"] = bando_id or hashlib.sha256(url.encode()).hexdigest()
     data["fonte"] = fonte
