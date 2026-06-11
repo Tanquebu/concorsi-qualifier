@@ -49,6 +49,7 @@ def main() -> None:
                 url=meta["url"],
                 fonte=meta["fonte"],
                 bando_id=file_hash,
+                data_pubblicazione=meta.get("published", ""),
                 db_path=args.db,
             )
             print(f"  OK   {file_hash} — {bando.titolo[:60]!r}")

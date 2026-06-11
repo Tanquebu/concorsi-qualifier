@@ -45,7 +45,7 @@ def _compute_confidence(data: dict[str, Any]) -> float:
     return round(filled / len(optional_fields), 2)
 
 
-def run_extraction(testo: str) -> tuple[dict[str, Any], float]:
+def run_extraction(testo: str, data_pubblicazione: str = "") -> tuple[dict[str, Any], float]:
     """Estrae dati strutturati dal testo con retry su prompt semplificato.
 
     Restituisce (dati_estratti, extraction_confidence).
@@ -53,10 +53,12 @@ def run_extraction(testo: str) -> tuple[dict[str, Any], float]:
     """
     llm = _get_llm()
     last_exc: Exception = RuntimeError("Estrazione fallita")
+    data_pub = data_pubblicazione or "non disponibile"
+    invoke_input = {"testo_bando": testo, "data_pubblicazione": data_pub}
 
     for prompt in (EXTRACTION_PROMPT, EXTRACTION_PROMPT_SIMPLIFIED):
         try:
-            response = (prompt | llm).invoke({"testo_bando": testo})
+            response = (prompt | llm).invoke(invoke_input)
             raw = response.content
             content = raw if isinstance(raw, str) else str(raw)
             data: dict[str, Any] = _extract_json_from_text(content)

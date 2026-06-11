@@ -17,10 +17,11 @@ def extract(
     url: str = "",
     fonte: str = "",
     bando_id: str = "",
+    data_pubblicazione: str = "",
     db_path: Path = _DEFAULT_DB,
 ) -> Bando:
     """Estrae un Bando dal testo e lo persiste in SQLite."""
-    data, confidence = run_extraction(testo)
+    data, confidence = run_extraction(testo, data_pubblicazione=data_pubblicazione)
 
     data["titolo"] = data.get("titolo") or ""
     data["ente"] = data.get("ente") or ""

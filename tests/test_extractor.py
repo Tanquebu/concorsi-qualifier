@@ -42,19 +42,24 @@ def _make_llm(*responses: str) -> RunnableLambda:
 # --- prompt ---
 
 def test_prompt_render() -> None:
-    result = EXTRACTION_PROMPT.format(testo_bando="Testo bando di prova lungo quanto basta")
+    result = EXTRACTION_PROMPT.format(
+        testo_bando="Testo bando di prova lungo quanto basta",
+        data_pubblicazione="2026-01-01",
+    )
     assert isinstance(result, str)
     assert len(result) > 50
     assert "Testo bando di prova" in result
 
 
 def test_prompt_no_unresolved_vars() -> None:
-    result = EXTRACTION_PROMPT.format(testo_bando="test input")
+    result = EXTRACTION_PROMPT.format(testo_bando="test input", data_pubblicazione="2026-01-01")
     assert not re.search(r"\{[a-z_]+\}", result)
 
 
 def test_prompt_simplified_render() -> None:
-    result = EXTRACTION_PROMPT_SIMPLIFIED.format(testo_bando="test")
+    result = EXTRACTION_PROMPT_SIMPLIFIED.format(
+        testo_bando="test", data_pubblicazione="2026-01-01"
+    )
     assert "test" in result
     assert len(result) > 20
 
@@ -218,6 +223,6 @@ def test_extract_real_fixture_bando_01(tmp_path: Path) -> None:
 def test_extract_real_fixture_prompt_renders() -> None:
     """Verifica che il prompt si renderizzi senza errori con testo reale lungo."""
     testo = _BANDO_01_TXT.read_text(encoding="utf-8")
-    result = EXTRACTION_PROMPT.format(testo_bando=testo)
+    result = EXTRACTION_PROMPT.format(testo_bando=testo, data_pubblicazione="2026-01-01")
     assert len(result) > 500
     assert not re.search(r"\{[a-z_]+\}", result)
