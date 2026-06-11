@@ -1,6 +1,6 @@
 sources:
   - nome: InPA
-    url: https://www.inpa.gov.it/bandi/
+    url: https://www.inpa.gov.it/bandi-e-avvisi/
     tipo: html
     frequenza: daily
 
