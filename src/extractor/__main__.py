@@ -28,7 +28,7 @@ def main() -> None:
 
     for meta_path in meta_files:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        file_hash = meta_path.stem
+        file_hash = meta_path.stem.removesuffix(".meta")
         raw_file = args.raw / f"{file_hash}.{meta['ext']}"
 
         if not raw_file.exists():
