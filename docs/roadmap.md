@@ -803,7 +803,7 @@
 
 **Stato:**
 - [x] ✅ Completato — _Esecutore_ — 3 decisioni architetturali, PDF fallback chain, privacy by design strutturale, metriche, esempio output, stack con motivazioni
-- [ ] 🧪 Validato — _Tester_ — review umana richiesta
+- [x] 🧪 Validato — _Tester_ — leggibile come portfolio senza conoscenza del codice; link interni verificati
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
