@@ -340,7 +340,7 @@
 
 **Stato:**
 - [x] ✅ Completato — _Esecutore_ — 2 PDF scansionati + HTML reale; test OCR con `skipif` se tesseract assente
-- [x] 🧪 Validato — _Tester_ — 11/12 verde, 1 skipped (OCR — tesseract non installato); no crash su file reali
+- [x] 🧪 Validato — _Tester_ — 12/12 verde (OCR attivo dopo installazione poppler-utils + tesseract-ocr-ita)
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
