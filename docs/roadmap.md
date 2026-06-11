@@ -589,8 +589,8 @@
 - `pytest tests/test_matcher.py::test_match_real_fixtures` — `MatchResult.compatibilita` == valore atteso per ogni fixture
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `bando_compatibile.json` (Milano, LM-18, informatica) → alta; `bando_incompatibile.json` (Palermo, diploma, riservato interni) → bassa
+- [x] 🧪 Validato — _Tester_ — `test_match_real_fixture_compatibile` e `test_match_real_fixture_incompatibile` verdi
 - [ ] 🔁 Re-work: *(nota)*
 
 ---

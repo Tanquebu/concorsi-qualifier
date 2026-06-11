@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
@@ -212,3 +213,31 @@ def test_match_persists_to_db(tmp_path: Path) -> None:
         ).fetchone()
     assert row is not None
     assert row[1] == result.compatibilita
+
+
+# --- fixture reali ---
+
+_FIXTURE_DIR = Path(__file__).parent / "fixtures" / "matcher"
+
+
+def _load_bando(filename: str) -> Bando:
+    data = json.loads((_FIXTURE_DIR / filename).read_text(encoding="utf-8"))
+    return Bando(**data)
+
+
+def test_match_real_fixture_compatibile() -> None:
+    bando = _load_bando("bando_compatibile.json")
+    result = internal_match(bando, _profilo())
+    assert result.compatibilita == "alta", (
+        f"atteso 'alta', ottenuto '{result.compatibilita}' — "
+        f"checklist: {[(c.requisito, c.esito) for c in result.checklist]}"
+    )
+
+
+def test_match_real_fixture_incompatibile() -> None:
+    bando = _load_bando("bando_incompatibile.json")
+    result = internal_match(bando, _profilo())
+    assert result.compatibilita == "bassa", (
+        f"atteso 'bassa', ottenuto '{result.compatibilita}' — "
+        f"checklist: {[(c.requisito, c.esito) for c in result.checklist]}"
+    )
