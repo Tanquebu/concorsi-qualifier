@@ -23,23 +23,26 @@ def main() -> None:
         print(f"Nessun file .meta.json trovato in {args.raw}")
         return
 
-    print(f"File da processare: {len(meta_files)}")
+    totale = len(meta_files)
+    print(f"File da processare: {totale}")
     ok = err = skip = 0
 
-    for meta_path in meta_files:
+    for i, meta_path in enumerate(meta_files, 1):
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         file_hash = meta_path.stem.removesuffix(".meta")
         raw_file = args.raw / f"{file_hash}.{meta['ext']}"
 
+        prefix = f"[{i}/{totale}]"
+
         if not raw_file.exists():
-            print(f"  SKIP {file_hash} — file raw mancante")
+            print(f"  {prefix} SKIP {file_hash} — file raw mancante")
             skip += 1
             continue
 
         try:
             parse_result = parse(raw_file)
             if not parse_result.testo.strip():
-                print(f"  SKIP {file_hash} — testo vuoto ({parse_result.parse_method})")
+                print(f"  {prefix} SKIP {file_hash} — testo vuoto ({parse_result.parse_method})")
                 skip += 1
                 continue
 
@@ -52,10 +55,10 @@ def main() -> None:
                 data_pubblicazione=meta.get("published", ""),
                 db_path=args.db,
             )
-            print(f"  OK   {file_hash} — {bando.titolo[:60]!r}")
+            print(f"  {prefix} OK   {bando.titolo[:60]!r}")
             ok += 1
         except Exception as exc:
-            print(f"  ERR  {file_hash} — {exc}")
+            print(f"  {prefix} ERR  {exc}")
             err += 1
 
     print(f"\nEstrazione: {ok} ok, {skip} saltati, {err} errori")

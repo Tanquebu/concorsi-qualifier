@@ -79,13 +79,14 @@ def main() -> None:
         print("Nessun match_result trovato. Esegui prima matcher.")
         return
 
-    print(f"Schede da generare: {len(pairs)}\n")
-    for mr, bando in pairs:
+    totale = len(pairs)
+    print(f"Schede da generare: {totale}\n")
+    for i, (mr, bando) in enumerate(pairs, 1):
         try:
             path = generate_report(mr, bando, output_dir=args.output)
-            print(f"  OK  {path.name} — {bando.titolo[:55]}")
+            print(f"  [{i}/{totale}] OK  {path.name} — {bando.titolo[:55]}")
         except Exception as exc:
-            print(f"  ERR {bando.id} — {exc}")
+            print(f"  [{i}/{totale}] ERR {bando.id} — {exc}")
 
     print(f"\nSchede salvate in {args.output}/")
 

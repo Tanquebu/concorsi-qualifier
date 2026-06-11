@@ -48,13 +48,14 @@ def main() -> None:
         print("Nessun bando trovato in SQLite. Esegui prima il collector + extractor.")
         return
 
-    print(f"Profilo: {profilo.nome} | Bandi da analizzare: {len(bandi)}\n")
+    totale = len(bandi)
+    print(f"Profilo: {profilo.nome} | Bandi da analizzare: {totale}\n")
     alta = media = bassa = da_ver = 0
 
-    for bando in bandi:
+    for i, bando in enumerate(bandi, 1):
         result = match(bando, profilo, db_path=args.db)
         icon = _ESITO_ICON[result.compatibilita]
-        print(f"  {icon} [{result.compatibilita.upper():13}] {bando.titolo[:55]}")
+        print(f"  [{i}/{totale}] {icon} [{result.compatibilita.upper():13}] {bando.titolo[:55]}")
         if result.compatibilita == "alta":
             alta += 1
         elif result.compatibilita == "media":

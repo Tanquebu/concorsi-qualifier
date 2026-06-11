@@ -1,7 +1,7 @@
 sources:
   - nome: InPA Portale
     tipo: inpa_portal
-    per_page: 100
+    per_page: 500
     frequenza: daily
 
   - nome: InPA Blog
