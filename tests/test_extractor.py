@@ -169,3 +169,55 @@ def test_extract_persists_to_db(tmp_path: Path) -> None:
     assert row is not None
     assert row[0] == "Concorso Informatici"
     assert row[1] == "test"
+
+
+# --- fixture reale bando_01 ---
+
+_FIXTURE_DIR = Path(__file__).parent / "fixtures" / "extractor"
+_BANDO_01_TXT = _FIXTURE_DIR / "bando_01.txt"
+_BANDO_01_EXPECTED = _FIXTURE_DIR / "bando_01_expected.json"
+
+
+def test_extract_real_fixture_bando_01(tmp_path: Path) -> None:
+    """Verifica che il testo reale del bando venga processato correttamente."""
+    from src.extractor import extract
+    from src.extractor.models import Bando
+
+    testo = _BANDO_01_TXT.read_text(encoding="utf-8")
+    expected = json.loads(_BANDO_01_EXPECTED.read_text(encoding="utf-8"))
+
+    llm_response = json.dumps(
+        {
+            **expected,
+            "documenti_richiesti": [],
+        }
+    )
+
+    with patch(
+        "src.extractor.chain._get_llm",
+        return_value=_make_llm(llm_response, llm_response),
+    ):
+        bando = extract(
+            testo,
+            "pdf_text",
+            url="https://www.inpa.gov.it/bando-oss-sinalunga-2026/",
+            fonte="inpa",
+            bando_id="inpa-oss-sinalunga-2026",
+            db_path=tmp_path / "test.db",
+        )
+
+    assert isinstance(bando, Bando)
+    assert bando.posti == expected["posti"]
+    assert bando.ente == expected["ente"]
+    assert str(bando.scadenza) == expected["scadenza"]
+    assert bando.tassa_concorso == expected["tassa_concorso"]
+    assert len(bando.materie_esame) >= 5
+    assert len(bando.requisiti_formali) >= 3
+
+
+def test_extract_real_fixture_prompt_renders() -> None:
+    """Verifica che il prompt si renderizzi senza errori con testo reale lungo."""
+    testo = _BANDO_01_TXT.read_text(encoding="utf-8")
+    result = EXTRACTION_PROMPT.format(testo_bando=testo)
+    assert len(result) > 500
+    assert not re.search(r"\{[a-z_]+\}", result)

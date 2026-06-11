@@ -461,8 +461,8 @@
 - Nota: questo test chiama OpenRouter reale — richiede `OPENROUTER_API_KEY` in env
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — bando OSS Sinalunga 2026 (InPA reale, 339 righe); LLM mockato con JSON atteso; test prompt con testo lungo
+- [x] 🧪 Validato — _Tester_ — `test_extract_real_fixture_bando_01` e `test_extract_real_fixture_prompt_renders` verdi; posti/ente/scadenza/tassa verificati
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
