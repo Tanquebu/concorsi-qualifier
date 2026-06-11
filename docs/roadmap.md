@@ -843,10 +843,10 @@ mypy src/
 ruff check src/ tests/
 
 # Smoke test pipeline (richiede OpenRouter API key e Ollama locale)
-python -m src.collector config/sources.yaml
-python -m src.extractor
-python -m src.matcher config/profilo_candidato.yaml
-python -m src.reporter
+python3 -m src.collector config/sources.yaml
+python3 -m src.extractor
+python3 -m src.matcher config/profilo_candidato.yaml
+python3 -m src.reporter
 ```
 
 **Criteri MVP done:**

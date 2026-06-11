@@ -6,7 +6,7 @@
 
 ## 1. Descrizione testuale
 
-Il sistema si articola in sei moduli indipendenti che operano in pipeline sequenziale. Il `collector` interroga periodicamente 3–5 portali pubblici (InPA, RIPAM, enti locali) tramite Crawlee, salva snapshot HTML/PDF sul filesystem con hash `url + data_pubblicazione` per deduplicazione, e registra ogni run in SQLite. Il `parser` applica una fallback chain a tre livelli: estrazione testuale diretta con pdfplumber/pypdf, OCR con pytesseract + Tesseract (lingua italiana) per i PDF scansionati, marcatura `parse_failed` per i documenti irrecuperabili — che vengono conservati per revisione manuale, non scartati silenziosamente. L'`extractor` passa il testo a una chain LangChain che chiama OpenRouter (dati pubblici, nessun vincolo privacy), ottiene JSON strutturato e lo valida con il modello Pydantic v2 `Bando`; in caso di validation error, ritenta con prompt semplificato. Il `matcher` riceve un `Bando` e un `CandidatoProfilo` (letto da YAML locale) e produce un `MatchResult` tramite checklist deterministica Python puro: nessun LLM interviene nella decisione di compatibilità. L'esito è uno tra `alta | media | bassa | da_verificare`. Il `reporter` chiama Ollama locale per generare la spiegazione testuale del risultato e produce una scheda Markdown; il LLM locale riceve solo l'aggregato (checklist + esito), mai il profilo grezzo. Il `notifier` filtra i bandi con compatibilità ≥ media e li invia come digest email tramite n8n/Make.
+Il sistema si articola in sei moduli indipendenti che operano in pipeline sequenziale. Il `collector` interroga periodicamente i portali pubblici configurati (attualmente InPA via WordPress REST API) tramite httpx, salva snapshot HTML/PDF sul filesystem con sidecar `.meta.json` (url, fonte, data scraping), usa hash `url + data_pubblicazione` per deduplicazione, e registra ogni run in SQLite. I siti che rendono il contenuto via JavaScript (SPA Angular/React come RIPAM) richiedono Playwright e non sono ancora supportati. Il `parser` applica una fallback chain a tre livelli: estrazione testuale diretta con pdfplumber/pypdf, OCR con pytesseract + Tesseract (lingua italiana) per i PDF scansionati, marcatura `parse_failed` per i documenti irrecuperabili — che vengono conservati per revisione manuale, non scartati silenziosamente. L'`extractor` passa il testo a una chain LangChain che chiama OpenRouter (dati pubblici, nessun vincolo privacy), ottiene JSON strutturato e lo valida con il modello Pydantic v2 `Bando`; in caso di validation error, ritenta con prompt semplificato. Il `matcher` riceve un `Bando` e un `CandidatoProfilo` (letto da YAML locale) e produce un `MatchResult` tramite checklist deterministica Python puro: nessun LLM interviene nella decisione di compatibilità. L'esito è uno tra `alta | media | bassa | da_verificare`. Il `reporter` chiama Ollama locale per generare la spiegazione testuale del risultato e produce una scheda Markdown; il LLM locale riceve solo l'aggregato (checklist + esito), mai il profilo grezzo. Il `notifier` filtra i bandi con compatibilità ≥ media e li invia come digest email tramite n8n/Make.
 
 La separazione cloud/locale è architetturale: `extractor` usa sempre OpenRouter, `reporter` usa sempre Ollama. Non è una scelta di configurazione ma di struttura del codice — il profilo candidato non può fisicamente raggiungere un LLM cloud.
 
@@ -15,7 +15,7 @@ La separazione cloud/locale è architetturale: `extractor` usa sempre OpenRouter
 ## 2. Diagramma ASCII
 
 ```
-[fonti_web: InPA, RIPAM, enti_locali]
+[fonti_web: InPA (WordPress API) | RIPAM, enti_locali (TODO: Playwright)]
           │
           ▼
     [collector]  ─────────────────────────────┐
@@ -57,11 +57,11 @@ La separazione cloud/locale è architetturale: `extractor` usa sempre OpenRouter
 
 | Modulo | Input | Output | Dipendenze |
 |---|---|---|---|
-| `collector` | `config/sources.yaml` | File raw in `data/raw/`, log run in SQLite (`collector_runs`) | Crawlee, httpx, aiosqlite |
+| `collector` | `config/sources.yaml` | File raw in `data/raw/` + sidecar `.meta.json`, log run in SQLite (`collector_runs`) | httpx, BeautifulSoup4, pyyaml |
 | `parser` | File raw HTML/PDF da `data/raw/` | Testo estratto + campo `parse_method` | pdfplumber, pypdf, pytesseract, Pillow |
 | `extractor` | Testo bando + `parse_method` | `Bando` (Pydantic v2) persistito in SQLite | LangChain, langchain-openai, Pydantic v2, tenacity |
 | `matcher` | `Bando` da SQLite + `CandidatoProfilo` da YAML locale | `MatchResult` (Pydantic v2) persistito in SQLite | Pydantic v2, python-dateutil |
-| `reporter` | `MatchResult` + `Bando` da SQLite | Scheda Markdown in `data/processed/` | LangChain, Ollama (locale), rich |
+| `reporter` | `MatchResult` + `Bando` da SQLite | Scheda Markdown in `data/processed/` | LangChain, langchain-ollama, Ollama (locale o remoto) |
 | `notifier` | Schede Markdown filtrate per compatibilità | Payload email digest (HTML/plain) | n8n / Make (esterno via webhook), httpx |
 
 ---
@@ -89,7 +89,7 @@ concorsi-qualifier/
 │   └── profilo_candidato.yaml    # CandidatoProfilo — mai inviato a LLM cloud
 │
 ├── data/
-│   ├── raw/                      # snapshot HTML/PDF scaricati dal collector
+│   ├── raw/                      # snapshot HTML/PDF + sidecar .meta.json
 │   └── processed/                # schede Markdown generate dal reporter
 │
 ├── docs/
@@ -99,7 +99,7 @@ concorsi-qualifier/
 │   ├── __init__.py
 │   ├── collector/
 │   │   ├── __init__.py           # espone: run_collector()
-│   │   ├── crawler.py            # Crawlee runner, download HTML/PDF
+│   │   ├── crawler.py            # httpx download: tipo html/pdf/wordpress
 │   │   ├── dedup.py              # hash(url + data_pubblicazione)
 │   │   └── db.py                 # SQLite: tabella collector_runs
 │   ├── parser/
