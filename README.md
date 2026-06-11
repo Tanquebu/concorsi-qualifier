@@ -38,18 +38,24 @@ pip install -e ".[dev]"
 
 ### Fonti (collector)
 
-`config/sources.yaml` — elenco delle fonti da monitorare. Sono supportati due tipi:
+`config/sources.yaml` — elenco delle fonti da monitorare. Tipi supportati:
 
-- `tipo: wordpress` — scarica i bandi singoli via WordPress REST API (consigliato per InPA)
+- `tipo: inpa_portal` — interroga l'API REST del portale InPA (`status=OPEN`); restituisce solo bandi aperti con scadenze future. **Fonte consigliata per InPA.**
+- `tipo: wordpress` — scarica i post singoli via WordPress REST API
 - `tipo: html` — scarica la pagina come singolo file HTML
 - `tipo: pdf` — scarica un PDF direttamente
 
 ```yaml
 sources:
-  - nome: InPA
+  - nome: InPA Portale
+    tipo: inpa_portal
+    per_page: 500         # bandi da scaricare per run (su ~1700 aperti totali)
+    frequenza: daily
+
+  - nome: InPA Blog
     url: https://www.inpa.gov.it
     tipo: wordpress
-    per_page: 50          # post da scaricare per run (default: 50)
+    per_page: 50
     frequenza: daily
     exclude_keywords:     # titoli da scartare (case-insensitive)
       - manutenzione sul portale
@@ -67,6 +73,7 @@ titolo_studio: Laurea magistrale LM-18 Informatica
 aree_preferite:
   - Milano
   - Lombardia
+  - Italia        # aggiungere per non penalizzare bandi a sede nazionale
 settori:
   - informatica
 esclusioni:
@@ -176,6 +183,21 @@ mypy src/
 # Linting
 ruff check src/ tests/
 ```
+
+---
+
+## Logica di compatibilità
+
+Il matcher esegue 5 check deterministici e aggrega il risultato:
+
+| Esito | Condizione |
+|---|---|
+| `alta` | Nessun `fail`, nessun `warning` (campi `null` non penalizzano) |
+| `media` | Nessun `fail`, ma almeno un `warning` (es. sede fuori area preferita) |
+| `bassa` | Almeno un `fail` (es. bando scaduto, requisito escludente trovato) |
+| `da_verificare` | Tutti i campi sono `null` — nessuna informazione disponibile |
+
+I check sono: titolo di studio, area geografica, scadenza, requisiti escludenti, categoria.
 
 ---
 
