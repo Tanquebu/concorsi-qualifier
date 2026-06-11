@@ -17,21 +17,7 @@ Per un profilo tecnico (es. informatico con laurea magistrale LM-18) il processo
 
 Stimando 3–5 minuti per bando, si arriva a **1–3 ore settimanali** di lavoro ripetitivo, a bassa intensità cognitiva ma ad alta attenzione — il tipo di task che si presta all'automazione.
 
----
-
-## La soluzione
-
-Un sistema a sei moduli in pipeline sequenziale che copre l'intero percorso dal download al digest email:
-
-```
-collector → parser → extractor → matcher → reporter → notifier
-```
-
-Ogni modulo ha una sola responsabilità, un'interfaccia pubblica minimale, e comunica con gli altri tramite SQLite — non tramite chiamate dirette. Questo rende ogni componente sostituibile in isolamento.
-
-Il tempo di analisi passa da **3–5 minuti per bando** a **< 5 secondi** per la qualificazione automatica, più il tempo di lettura della scheda generata (30–60 secondi). Il controllo finale resta al candidato.
-
-Per l'architettura dettagliata vedi [`docs/architecture.md`](architecture.md).
+Ho progettato un sistema a sei moduli (`collector → parser → extractor → matcher → reporter → notifier`) che copre l'intero percorso dal download al digest email. Ogni modulo ha una sola responsabilità, un'interfaccia pubblica minimale, e comunica con gli altri tramite SQLite — non tramite chiamate dirette. Questo rende ogni componente sostituibile in isolamento. Il tempo di analisi scende da **3–5 minuti** a **< 5 secondi** per bando; il controllo finale resta al candidato.
 
 ---
 
@@ -41,7 +27,7 @@ Per l'architettura dettagliata vedi [`docs/architecture.md`](architecture.md).
 
 La scelta più importante del progetto non è tecnologica, è di principio.
 
-Il matching tra bando e profilo candidato è interamente deterministico: cinque funzioni Python puro (`check_titolo_studio`, `check_area_geografica`, `check_scadenza`, `check_esclusioni`, `check_categoria`) producono una checklist di `CheckItem`, ognuno con esito `ok | warning | fail | unknown`. L'aggregazione è una regola esplicita:
+Ho progettato il matching tra bando e profilo candidato come un processo interamente deterministico: cinque funzioni Python puro (`check_titolo_studio`, `check_area_geografica`, `check_scadenza`, `check_esclusioni`, `check_categoria`) producono una checklist di `CheckItem`, ognuno con esito `ok | warning | fail | unknown`. L'aggregazione segue una regola esplicita:
 
 - tutti `ok` → `alta`
 - almeno un `fail` → `bassa`
@@ -64,83 +50,48 @@ I bandi di concorso pubblico arrivano in tre forme, spesso imprevedibili:
 | PDF scansionato (immagine) | ~30% | `pytesseract` + Tesseract OCR (lingua `ita`) + `pdf2image` |
 | HTML della pagina del bando | ~10% | `BeautifulSoup` + pulizia nav/footer |
 
-La chain è lineare: si prova `pdf_text`, se restituisce meno di 50 caratteri si passa a `pdf_ocr`, se anche quello fallisce si marca il bando come `parse_failed` — che non viene scartato ma conservato per revisione manuale con `status = "parse_failed"` in SQLite.
+Ho scelto una chain lineare: si prova `pdf_text`, se restituisce meno di 50 caratteri si passa a `pdf_ocr`, se anche quello fallisce il bando viene marcato come `parse_failed` — non scartato, ma conservato per revisione manuale con `status = "parse_failed"` in SQLite.
 
 Questa scelta — *fallire visibilmente invece di fallire silenziosamente* — ha un costo (qualche bando richiede intervento manuale) ma elimina la categoria peggiore di bug: quelli invisibili dove il sistema sembra funzionare ma perde dati.
-
-```
-PDF grezzo
-   │
-   ├─ pdfplumber / pypdf ──► testo ok? → parse_method = "pdf_text" ✓
-   │
-   ├─ pytesseract (OCR) ───► testo ok? → parse_method = "pdf_ocr"  ✓
-   │
-   └─ fallback finale ──────────────── → parse_method = "parse_failed" (conservato)
-```
 
 ---
 
 ### 3. Privacy by design — strutturale, non configurabile
 
-Il profilo del candidato (nome, titolo di studio, aree preferite, parole chiave) è il dato più sensibile del sistema. La decisione è che **non possa fisicamente raggiungere un LLM cloud**, non per policy ma per costruzione del codice.
+Il profilo del candidato (nome, titolo di studio, aree preferite, parole chiave) è il dato più sensibile del sistema. Ho scelto che **non possa fisicamente raggiungere un LLM cloud**, non per policy ma per costruzione del codice.
 
-Il sistema usa due LLM con ruoli distinti:
+Ho separato i due LLM con ruoli distinti:
 
 | Modulo | LLM | Dati che riceve |
 |---|---|---|
 | `extractor` | OpenRouter (cloud) | Solo testo pubblico del bando |
 | `reporter` | Ollama (locale) | Checklist anonimizzata + esito aggregato |
 
-Il `matcher` — l'unico modulo che vede entrambi il `Bando` e il `CandidatoProfilo` — non chiama nessun LLM. Il profilo non esce dalla macchina locale in nessun punto del flusso normale.
+Il `matcher` — l'unico modulo che vede sia il `Bando` che il `CandidatoProfilo` — non chiama nessun LLM. Il profilo non esce dalla macchina locale in nessun punto del flusso normale.
 
-Questa separazione non è un flag di configurazione. Non esiste un `use_cloud=True` da passare al reporter.
+Questa separazione non è un flag di configurazione: non esiste un `use_cloud=True` da passare al reporter.
 
 ---
 
 ## Esempio di output
 
-Per un bando informatico del Comune di Milano, compatibile con il profilo LM-18:
+Per un bando informatico del Comune di Milano, compatibile con un profilo LM-18:
 
 ```markdown
 # Concorso pubblico – n. 3 posti di Informatico cat. D
 
 ## Riepilogo
-- **Ente:** Comune di Milano
-- **Posti:** 3
-- **Scadenza:** 2026-12-31
-- **Area geografica:** Milano
-- **Fonte:** [inpa](https://www.inpa.gov.it/bandi-di-concorso/informatico-comune-milano-2026/)
+- **Ente:** Comune di Milano — **Posti:** 3 — **Scadenza:** 2026-12-31
 
-## Compatibilità
-**Esito:** ALTA
+## Compatibilità: ALTA
+- ✅ Titolo di studio — ✅ Area geografica — ✅ Scadenza — ✅ Categoria
 
-### Checklist requisiti
-- ✅ **Titolo di studio**: ok
-- ✅ **Area geografica**: ok
-- ✅ **Scadenza**: ok
-- ✅ **Esclusioni**: ok
-- ✅ **Categoria**: ok
-
-## Analisi
-Il bando è compatibile con il profilo del candidato su tutti i criteri
-verificabili automaticamente. Il titolo di studio richiesto (LM-18 Informatica)
-corrisponde al titolo posseduto, l'area geografica è tra quelle preferite e la
-scadenza è ampiamente nei termini.
-
-## Azioni consigliate
-- Verificare i requisiti formali sul bando ufficiale prima di presentare domanda
-- Preparare la documentazione (certificati, autocertificazioni)
-- Controllare le materie d'esame e predisporre un piano di studio
-
-## Materie d'esame
-- Informatica generale
-- Basi di dati e sistemi informativi
-- Sicurezza informatica
-- Normativa sul codice digitale (CAD)
+Il bando è compatibile su tutti i criteri verificabili automaticamente.
+Il titolo LM-18 soddisfa il requisito, l'area è tra quelle preferite,
+la scadenza è ampiamente nei termini.
 
 ---
-*Analisi assistita. La verifica finale dei requisiti formali resta
-responsabilità del candidato.*
+*Analisi assistita. La verifica finale resta responsabilità del candidato.*
 ```
 
 ---
@@ -180,6 +131,10 @@ responsabilità del candidato.*
 
 ---
 
-## Sviluppi possibili
+## Perché conta
 
-Il motore (collector → parser → extractor → reporter) è separato dalla logica di dominio "bandi" (`Bando`, checklist del `matcher`). Puntarlo su un altro verticale documentale — gare d'appalto, bandi europei, ciclo passivo di un'azienda — richiede di cambiare il modello dati e le funzioni `check_*`, non l'infrastruttura.
+Questo progetto mi ha costretto a rispondere a una domanda concreta: quando ha senso affidare una decisione a un LLM e quando no? Ho scelto di non farlo per il matching — non per sfiducia nei modelli, ma perché in un contesto dove l'output ha conseguenze pratiche per un candidato, la riproducibilità e l'auditabilità valgono più della flessibilità.
+
+La stessa tensione vale per la privacy: ho progettato il vincolo strutturalmente, non configurativamente, perché un sistema sicuro non è quello che non viene configurato male — è quello che non può essere configurato in modo insicuro.
+
+Il motore (collector → parser → extractor → reporter) è separato dalla logica di dominio "bandi". Puntarlo su un altro verticale documentale — gare d'appalto, bandi europei, ciclo passivo aziendale — richiede di cambiare il modello dati e le funzioni `check_*`, non l'infrastruttura.

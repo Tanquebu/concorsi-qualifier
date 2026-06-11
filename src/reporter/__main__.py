@@ -5,11 +5,28 @@ import logging
 import sqlite3
 from pathlib import Path
 
+from rich import box
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
 from src.extractor.models import Bando
 from src.matcher.models import CheckItem, MatchResult
 from src.reporter import generate_report
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+_COMPAT_CONFIG: dict[str, tuple[str, str]] = {
+    "alta":          ("✅ ALTA",   "bold green"),
+    "media":         ("🟡 MEDIA",  "bold yellow"),
+    "bassa":         ("❌ BASSA",  "bold red"),
+    "da_verificare": ("❓ DA_VER", "dim"),
+}
+
+
+def _compat_cell(compat: str) -> Text:
+    label, style = _COMPAT_CONFIG.get(compat, (compat, ""))
+    return Text(label, style=style)
 
 
 def _load_pairs(db_path: Path) -> list[tuple[MatchResult, Bando]]:
@@ -79,16 +96,45 @@ def main() -> None:
         print("Nessun match_result trovato. Esegui prima matcher.")
         return
 
+    console = Console()
+    table = Table(box=box.SIMPLE, show_header=True, header_style="bold", padding=(0, 1))
+    table.add_column("#", style="dim", width=3, justify="right")
+    table.add_column("Esito", width=12)
+    table.add_column("Ente", width=22, no_wrap=True)
+    table.add_column("Titolo", width=48, no_wrap=True)
+    table.add_column("Scadenza", width=10)
+    table.add_column("File", width=22, style="dim", no_wrap=True)
+
     totale = len(pairs)
-    print(f"Schede da generare: {totale}\n")
+    errori = 0
     for i, (mr, bando) in enumerate(pairs, 1):
         try:
             path = generate_report(mr, bando, output_dir=args.output)
-            print(f"  [{i}/{totale}] OK  {path.name} — {bando.titolo[:55]}")
+            scadenza = str(bando.scadenza) if bando.scadenza else "—"
+            table.add_row(
+                str(i),
+                _compat_cell(mr.compatibilita),
+                (bando.ente or "—")[:22],
+                (bando.titolo or "—")[:48],
+                scadenza,
+                path.name,
+            )
         except Exception as exc:
-            print(f"  [{i}/{totale}] ERR {bando.id} — {exc}")
+            errori += 1
+            table.add_row(
+                str(i),
+                Text("ERR", style="bold red"),
+                "—",
+                (bando.id or "")[:48],
+                "—",
+                str(exc)[:22],
+            )
 
-    print(f"\nSchede salvate in {args.output}/")
+    console.print(f"\n[bold]Schede da generare:[/bold] {totale}")
+    console.print(table)
+    if errori:
+        console.print(f"[bold red]{errori} errori[/bold red]")
+    console.print(f"[dim]Output → {args.output}/[/dim]\n")
 
 
 if __name__ == "__main__":
