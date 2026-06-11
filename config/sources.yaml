@@ -1,6 +1,6 @@
 sources:
   - nome: InPA
-    url: https://www.inpa.gov.it/bandi-di-concorso/
+    url: https://www.inpa.gov.it/bandi/
     tipo: html
     frequenza: daily
 
@@ -9,7 +9,8 @@ sources:
     tipo: html
     frequenza: daily
 
-  - nome: Comune di Milano
-    url: https://www.comune.milano.it/aree-tematiche/lavoro/concorsi-e-avvisi
-    tipo: html
-    frequenza: weekly
+  # Comune di Milano blocca i crawler (403) — commentato fino a soluzione
+  # - nome: Comune di Milano
+  #   url: https://www.comune.milano.it/aree-tematiche/lavoro/concorsi-e-avvisi
+  #   tipo: html
+  #   frequenza: weekly

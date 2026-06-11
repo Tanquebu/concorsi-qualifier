@@ -19,11 +19,13 @@ def main() -> None:
     print(f"Collector avviato — fonti: {args.sources_config}")
     result = run_collector(args.sources_config, db_path=args.db, raw_dir=args.raw)
     print(
-        f"Completato: {result.n_nuovi} nuovi, {result.n_duplicati} duplicati"
+        f"Completato: {result.n_nuovi} nuovi, {result.n_duplicati} già visti"
         f" | status={result.status}"
     )
     if result.errori:
-        print(f"Errori: {result.errori}")
+        print("Errori di download:")
+        for e in (result.errori or []):
+            print(f"  - {e}")
 
 
 if __name__ == "__main__":

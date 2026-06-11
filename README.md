@@ -79,22 +79,22 @@ export NOTIFIER_WEBHOOK_URL="https://hook.example.com/..."  # per digest email
 
 ```bash
 # 1. Scarica bandi dalle fonti configurate
-python -m src.collector config/sources.yaml
+python3 -m src.collector config/sources.yaml
 
 # 2. Estrai testo dai file raw (PDF/HTML)
-python -m src.parser data/raw/
+python3 -m src.parser data/raw/
 
 # 3. Struttura i dati con LLM (OpenRouter)
-python -m src.extractor
+python3 -m src.extractor
 
 # 4. Esegui il matching con il profilo candidato
-python -m src.matcher config/profilo_candidato.yaml
+python3 -m src.matcher config/profilo_candidato.yaml
 
 # 5. Genera le schede Markdown
-python -m src.reporter
+python3 -m src.reporter
 
 # 6. Invia il digest (richiede NOTIFIER_WEBHOOK_URL)
-python -m src.notifier
+python3 -m src.notifier
 ```
 
 ---

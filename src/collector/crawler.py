@@ -22,11 +22,8 @@ def download_source(
 
     raw_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        response = httpx.get(url, follow_redirects=True, timeout=30.0)
-        response.raise_for_status()
-    except Exception:
-        return []
+    response = httpx.get(url, follow_redirects=True, timeout=30.0)
+    response.raise_for_status()
 
     content_type = response.headers.get("content-type", "")
     if "pdf" in content_type or tipo == "pdf":

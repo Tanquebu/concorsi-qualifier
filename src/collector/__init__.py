@@ -32,20 +32,22 @@ def run_collector(
     insert_run(db_path, run)
 
     errori: list[str] = []
-    n_trovati = 0
     n_nuovi = 0
+    n_duplicati = 0
 
     for source in sources:
         fonte_nome: str = source.get("nome", source["url"])
         known = get_known_hashes(db_path, fonte_nome)
         try:
             nuovi = download_source(source, raw_dir, known)
-            n_trovati += 1
-            n_nuovi += len(nuovi)
+            if nuovi:
+                n_nuovi += len(nuovi)
+            else:
+                n_duplicati += 1
         except Exception as exc:
             errori.append(f"{fonte_nome}: {exc}")
 
-    n_duplicati = n_trovati - n_nuovi
+    n_trovati = n_nuovi + n_duplicati
     completed_at = datetime.utcnow().isoformat()
     status = "completed" if not errori else "completed_with_errors"
 
