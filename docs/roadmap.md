@@ -489,8 +489,8 @@
 - `pytest tests/test_models.py::test_check_item_literals` — `esito="invalid"` → `ValidationError`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — modelli già definiti in S0; `DISCLAIMER` come costante condivisa
+- [x] 🧪 Validato — _Tester_ — `test_match_result_roundtrip` e `test_check_item_literals` verdi (S0)
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -518,8 +518,8 @@
 - Almeno 2 casi (ok/fail/unknown) per ogni `check_*`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — livelli titolo con `_LIVELLI_TITOLO`; confronto case-insensitive substring
+- [x] 🧪 Validato — _Tester_ — 12/12 test `check_*` verdi; `mypy src/matcher/` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -546,8 +546,8 @@
 - `pytest tests/test_matcher.py::test_match_returns_match_result` — tipo di ritorno `MatchResult`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `aggregate_checks` con logica: empty/all-unknown → da_verificare; any fail → bassa; all ok → alta; else → media
+- [x] 🧪 Validato — _Tester_ — `test_aggregate_*` 5/5 verde; `test_match_*` 3/3 verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -568,8 +568,8 @@
 - `mypy src/matcher/` — zero errori
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `INSERT OR REPLACE INTO match_results`; `db_path` opzionale per test
+- [x] 🧪 Validato — _Tester_ — `test_match_persists_to_db` verde; `mypy src/matcher/` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -612,8 +612,8 @@
 - `pytest tests/test_reporter.py::test_reporter_prompt_disclaimer_present` — disclaimer trovato nell'output formattato
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `ChatPromptTemplate.from_template`; DISCLAIMER importato da `matcher.models`
+- [x] 🧪 Validato — _Tester_ — `test_reporter_prompt_render` e `test_reporter_prompt_disclaimer_present` verdi
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -636,8 +636,8 @@
 - `pytest tests/test_reporter.py::test_chain_never_raises` — mock Ollama risposta vuota → dict restituito senza eccezioni
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `_parse_response` con regex; `except Exception` fallback graceful; `RunnableLambda` mock
+- [x] 🧪 Validato — _Tester_ — `test_parse_response_*` 3/3 verde; `test_generate_report_returns_path` verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -660,8 +660,8 @@
 - `pytest tests/test_reporter.py::test_renderer_file_saved` — file `.md` creato in `data/processed/`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — 8 sezioni Markdown; emoji esito; sezioni condizionali (azioni, da_verificare, etc.)
+- [x] 🧪 Validato — _Tester_ — `test_renderer_*` 3/3 verde; disclaimer sempre presente
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -682,8 +682,8 @@
 - `mypy src/reporter/` — zero errori
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — delega a `generate_explanation` + `render_scheda`; `output_dir` opzionale
+- [x] 🧪 Validato — _Tester_ — `test_generate_report_returns_path` verde; `mypy src/reporter/` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---

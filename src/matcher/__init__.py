@@ -1,0 +1,46 @@
+import json
+import sqlite3
+from pathlib import Path
+
+from src.db import init_db
+from src.extractor.models import Bando
+from src.matcher.matcher import match as _match
+from src.matcher.models import CandidatoProfilo, MatchResult
+
+_DEFAULT_DB = Path("concorsi.db")
+
+
+def match(
+    bando: Bando,
+    profilo: CandidatoProfilo,
+    db_path: Path = _DEFAULT_DB,
+) -> MatchResult:
+    """Esegue il match deterministico e persiste il MatchResult in SQLite."""
+    result = _match(bando, profilo)
+    _persist_match_result(result, db_path)
+    return result
+
+
+def _persist_match_result(mr: MatchResult, db_path: Path) -> None:
+    init_db(db_path)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO match_results
+               (id, bando_id, profilo_nome, compatibilita, checklist,
+                da_verificare, spiegazione, disclaimer, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                mr.id,
+                mr.bando_id,
+                mr.profilo_nome,
+                mr.compatibilita,
+                json.dumps([item.model_dump() for item in mr.checklist]),
+                json.dumps(mr.da_verificare),
+                mr.spiegazione,
+                mr.disclaimer,
+                mr.created_at.isoformat(),
+            ),
+        )
+
+
+__all__ = ["match", "MatchResult", "CandidatoProfilo"]
