@@ -11,9 +11,9 @@ Il LLM non prende mai decisioni di matching. La checklist è deterministica; il 
 ## Prerequisiti
 
 - Python 3.10+
-- [Ollama](https://ollama.ai) in esecuzione locale (`llama3.1` o `mistral`)
+- [Ollama](https://ollama.ai) in esecuzione locale o su macchina raggiungibile (`llama3.1` o `mistral`)
 - Tesseract OCR con lingua italiana (`tesseract-ocr tesseract-ocr-ita`)
-- API key OpenRouter (solo per il modulo `extractor`)
+- API key [OpenRouter](https://openrouter.ai) (solo per il modulo `extractor`)
 
 ### Installazione dipendenze di sistema (Ubuntu/Debian)
 
@@ -38,15 +38,24 @@ pip install -e ".[dev]"
 
 ### Fonti (collector)
 
-`config/sources.yaml` — elenco delle fonti da monitorare:
+`config/sources.yaml` — elenco delle fonti da monitorare. Sono supportati due tipi:
+
+- `tipo: wordpress` — scarica i bandi singoli via WordPress REST API (consigliato per InPA)
+- `tipo: html` — scarica la pagina come singolo file HTML
+- `tipo: pdf` — scarica un PDF direttamente
 
 ```yaml
 sources:
   - nome: InPA
-    url: https://www.inpa.gov.it/bandi-di-concorso/
-    tipo: html
+    url: https://www.inpa.gov.it
+    tipo: wordpress
+    per_page: 50          # post da scaricare per run (default: 50)
     frequenza: daily
+    exclude_keywords:     # titoli da scartare (case-insensitive)
+      - manutenzione sul portale
 ```
+
+> **Nota:** siti che rendono i contenuti via JavaScript (SPA Angular/React) richiedono Playwright e non sono ancora supportati dal collector base.
 
 ### Profilo candidato
 
@@ -67,9 +76,10 @@ esclusioni:
 ### Variabili d'ambiente
 
 ```bash
-export OPENROUTER_API_KEY="sk-or-..."     # necessario solo per extractor
-export OLLAMA_MODEL="llama3.1"            # default
-export OLLAMA_BASE_URL="http://localhost:11434"  # default
+export OPENROUTER_API_KEY="sk-or-..."          # necessario per extractor
+export OPENROUTER_MODEL="mistralai/mistral-small-3.2-24b-instruct"  # default
+export OLLAMA_MODEL="llama3.1"                 # default
+export OLLAMA_BASE_URL="http://localhost:11434" # default; può essere remoto (es. Tailscale)
 export NOTIFIER_WEBHOOK_URL="https://hook.example.com/..."  # per digest email
 ```
 
@@ -81,21 +91,26 @@ export NOTIFIER_WEBHOOK_URL="https://hook.example.com/..."  # per digest email
 # 1. Scarica bandi dalle fonti configurate
 python3 -m src.collector config/sources.yaml
 
-# 2. Estrai testo dai file raw (PDF/HTML)
-python3 -m src.parser data/raw/
-
-# 3. Struttura i dati con LLM (OpenRouter)
+# 2. Struttura i dati con LLM (OpenRouter)
 python3 -m src.extractor
 
-# 4. Esegui il matching con il profilo candidato
+# 3. Esegui il matching con il profilo candidato
 python3 -m src.matcher config/profilo_candidato.yaml
 
-# 5. Genera le schede Markdown
+# 4. Genera le schede Markdown
 python3 -m src.reporter
 
-# 6. Invia il digest (richiede NOTIFIER_WEBHOOK_URL)
+# 5. Invia il digest (richiede NOTIFIER_WEBHOOK_URL)
 python3 -m src.notifier
+
+# oppure: anteprima senza invio
+python3 -m src.notifier --dry-run
+
+# oppure: mostra tutti i bandi compatibili ignorando il filtro scadenza (utile per test)
+python3 -m src.notifier --dry-run --all
 ```
+
+> Il modulo `parser` (`python3 -m src.parser`) è disponibile per estrarre testo da PDF/HTML grezzi in modo standalone, ma non è necessario nel flusso normale: l'extractor lo invoca automaticamente.
 
 ---
 
@@ -104,7 +119,8 @@ python3 -m src.notifier
 ```
 data/
 ├── raw/                    # file HTML/PDF scaricati dal collector
-│   └── <sha256>.<ext>
+│   ├── <sha256>.html
+│   └── <sha256>.meta.json  # url, fonte, data scraping
 ├── processed/              # schede Markdown generate dal reporter
 │   └── <bando_id>.md
 concorsi.db                 # SQLite: bandi, collector_runs, match_results
