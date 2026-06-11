@@ -24,8 +24,9 @@ def match(
 def _persist_match_result(mr: MatchResult, db_path: Path) -> None:
     init_db(db_path)
     with sqlite3.connect(db_path) as conn:
+        conn.execute("DELETE FROM match_results WHERE bando_id = ?", (mr.bando_id,))
         conn.execute(
-            """INSERT OR REPLACE INTO match_results
+            """INSERT INTO match_results
                (id, bando_id, profilo_nome, compatibilita, checklist,
                 da_verificare, spiegazione, disclaimer, created_at)
                VALUES (?,?,?,?,?,?,?,?,?)""",
