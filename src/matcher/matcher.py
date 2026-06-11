@@ -21,9 +21,9 @@ def aggregate_checks(
         return "da_verificare"
     if any(e == "fail" for e in esiti):
         return "bassa"
-    if all(e == "ok" for e in esiti):
-        return "alta"
-    return "media"
+    if any(e == "warning" for e in esiti):
+        return "media"
+    return "alta"
 
 
 def match(bando: Bando, profilo: CandidatoProfilo) -> MatchResult:
