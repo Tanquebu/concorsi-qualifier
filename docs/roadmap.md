@@ -802,8 +802,8 @@
 - Tutti i link interni (`docs/architecture.md`, file fixture) funzionanti
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — 3 decisioni architetturali, PDF fallback chain, privacy by design strutturale, metriche, esempio output, stack con motivazioni
+- [ ] 🧪 Validato — _Tester_ — review umana richiesta
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
