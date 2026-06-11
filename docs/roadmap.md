@@ -713,8 +713,8 @@
 - `pytest tests/test_notifier.py::test_build_payload_structure` — payload ha chiavi `html` e `plain_text`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `filter_bandi` esclude scadenza None, expired, beyond cutoff, e compatibilità < media
+- [x] 🧪 Validato — _Tester_ — 8/8 test `filter_*` e `build_payload_*` verdi; `mypy` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -737,8 +737,8 @@
 - `pytest tests/test_notifier.py::test_send_digest_empty` — lista vuota → nessuna chiamata HTTP
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `except Exception` su httpx; skip se webhook URL non configurato; skip se lista filtrata vuota
+- [x] 🧪 Validato — _Tester_ — `test_send_digest_*` 4/4 verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -758,8 +758,8 @@
 - `mypy src/notifier/` — zero errori
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — 15 test con `unittest.mock.patch` su `httpx.post`
+- [x] 🧪 Validato — _Tester_ — `pytest tests/test_notifier.py` 15/15 verde; `mypy src/notifier/` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -779,8 +779,8 @@
 - Almeno 1 scheda `.md` generata come da documentazione
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — sezioni: overview, prerequisiti, installazione, config YAML, pipeline step-by-step, struttura output, esempio scheda, vincoli, link architettura
+- [ ] 🧪 Validato — _Tester_ — da verificare su virtualenv fresco
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -824,8 +824,8 @@
 - `pytest --cov=src tests/ --cov-report=term-missing` — coverage ≥ 70% su tutti i moduli
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — fixture HTML + bando mock + profilo mock; 2 test (pipeline completa + compatibilità alta)
+- [x] 🧪 Validato — _Tester_ — `pytest tests/test_integration.py` 2/2 verde; `pytest tests/` 99/99 verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
