@@ -133,3 +133,43 @@ def test_run_collector_returns_collector_run(tmp_path: Path) -> None:
         result = run_collector(sources_yaml, db_path=db)
 
     assert isinstance(result, CollectorRun)
+
+
+# --- fixture reale InPA ---
+
+_FIXTURE_HTML = Path(__file__).parent / "fixtures" / "collector" / "inpa_listing.html"
+
+
+def test_run_collector_real_fixture(tmp_path: Path) -> None:
+    """Verifica il flusso completo con contenuto HTML reale (senza rete)."""
+    from unittest.mock import MagicMock
+
+    from src.collector import run_collector
+
+    fixture_bytes = _FIXTURE_HTML.read_bytes()
+
+    mock_response = MagicMock()
+    mock_response.content = fixture_bytes
+    mock_response.headers = {"content-type": "text/html; charset=utf-8"}
+    mock_response.raise_for_status.return_value = None
+
+    sources_yaml = tmp_path / "sources.yaml"
+    sources_yaml.write_text(
+        "sources:\n"
+        "  - nome: InPA\n"
+        "    url: https://www.inpa.gov.it/bandi-di-concorso/\n"
+        "    tipo: html\n"
+        "    frequenza: daily\n"
+    )
+    db = tmp_path / "test.db"
+    raw = tmp_path / "raw"
+
+    with patch("src.collector.crawler.httpx.get", return_value=mock_response):
+        result = run_collector(sources_yaml, db_path=db, raw_dir=raw)
+
+    assert result.n_nuovi == 1
+    assert result.status in ("completed", "completed_with_errors")
+
+    saved = list(raw.glob("*.html"))
+    assert len(saved) == 1
+    assert saved[0].stat().st_size == len(fixture_bytes)

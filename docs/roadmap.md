@@ -225,8 +225,8 @@
 - `pytest tests/test_collector.py::test_run_collector_real_fixture` — fixture locale come "fonte", verifica file raw creato e `CollectorRun` con `n_nuovi == 1`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — fixture `inpa_listing.html` (69K); mock `httpx.get` restituisce bytes locali
+- [x] 🧪 Validato — _Tester_ — `test_run_collector_real_fixture` verde; file raw salvato con dimensione corretta
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
