@@ -1,0 +1,78 @@
+import hashlib
+import json
+import sqlite3
+from pathlib import Path
+
+from src.db import init_db
+from src.extractor.chain import run_extraction
+from src.extractor.models import Bando
+
+_DEFAULT_DB = Path("concorsi.db")
+
+
+def extract(
+    testo: str,
+    parse_method: str,
+    *,
+    url: str = "",
+    fonte: str = "",
+    bando_id: str = "",
+    db_path: Path = _DEFAULT_DB,
+) -> Bando:
+    """Estrae un Bando dal testo e lo persiste in SQLite."""
+    data, confidence = run_extraction(testo)
+
+    data.setdefault("titolo", "")
+    data.setdefault("ente", "")
+    data.setdefault("requisiti_formali", [])
+    data.setdefault("materie_esame", [])
+    data.setdefault("documenti_richiesti", [])
+
+    data["id"] = bando_id or hashlib.sha256(url.encode()).hexdigest()
+    data["fonte"] = fonte
+    data["url"] = url
+    data["testo_raw"] = testo
+    data["parse_method"] = parse_method
+    data["extraction_confidence"] = confidence
+
+    bando = Bando(**data)
+    _persist_bando(bando, db_path)
+    return bando
+
+
+def _persist_bando(bando: Bando, db_path: Path) -> None:
+    init_db(db_path)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO bandi
+               (id, fonte, url, titolo, ente, categoria, area_geografica, posti, scadenza,
+                titolo_studio_richiesto, requisiti_formali, materie_esame, tassa_concorso,
+                link_candidatura, documenti_richiesti, testo_raw, parse_method,
+                extraction_confidence, status, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                bando.id,
+                bando.fonte,
+                bando.url,
+                bando.titolo,
+                bando.ente,
+                bando.categoria,
+                bando.area_geografica,
+                bando.posti,
+                str(bando.scadenza) if bando.scadenza else None,
+                bando.titolo_studio_richiesto,
+                json.dumps(bando.requisiti_formali),
+                json.dumps(bando.materie_esame),
+                bando.tassa_concorso,
+                bando.link_candidatura,
+                json.dumps(bando.documenti_richiesti),
+                bando.testo_raw,
+                bando.parse_method,
+                bando.extraction_confidence,
+                bando.status,
+                bando.created_at.isoformat(),
+            ),
+        )
+
+
+__all__ = ["extract", "run_extraction", "Bando"]

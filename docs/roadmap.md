@@ -368,8 +368,8 @@
 - `pytest tests/test_extractor.py::test_prompt_no_unresolved_vars` — output non contiene `{` o `}` residui
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_
+- [x] 🧪 Validato — _Tester_ — `test_prompt_render` e `test_prompt_no_unresolved_vars` verdi
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -392,8 +392,8 @@
 - `pytest tests/test_extractor.py::test_chain_raises_after_max_retry` — entrambi i mock restituiscono JSON invalido → eccezione sollevata (non swallowed)
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `run_extraction()` con retry; `RunnableLambda` per mock; `SecretStr` per api_key
+- [x] 🧪 Validato — _Tester_ — `test_run_extraction_*` 3/3 verde; mypy zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -415,8 +415,8 @@
 - `pytest tests/test_models.py::test_bando_scadenza_passata` — scadenza nel 2020 → `Bando` creato senza eccezione (solo warning loggato)
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — già in S0; validator scadenza e confidence range OK
+- [x] 🧪 Validato — _Tester_ — `test_bando_confidence_bounds` e `test_bando_scadenza_passata` verdi (S0)
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -439,8 +439,8 @@
 - `mypy src/extractor/` — zero errori
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — firma estesa con `url`, `fonte`, `bando_id` kwargs; `INSERT OR REPLACE`
+- [x] 🧪 Validato — _Tester_ — `test_extract_returns_bando` e `test_extract_persists_to_db` verdi; mypy OK
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
