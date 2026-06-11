@@ -36,4 +36,9 @@ def download_source(
 
     dest = raw_dir / f"{file_hash}.{ext}"
     dest.write_bytes(response.content)
+
+    import json
+    meta = {"url": url, "fonte": source.get("nome", ""), "ext": ext, "scraped_at": today}
+    (raw_dir / f"{file_hash}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+
     return [file_hash]
