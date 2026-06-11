@@ -84,9 +84,12 @@ def main() -> None:
         print("Nessun bando da notificare (compatibilità < media o scadenza fuori finestra).")
         return
 
-    print(f"Bandi da notificare: {len(filtered)}")
-    for bando, mr in filtered:
-        print(f"  [{mr.compatibilita.upper()}] {bando.titolo[:60]} — scadenza {bando.scadenza}")
+    totale = len(filtered)
+    print(f"Bandi da notificare: {totale}")
+    for i, (bando, mr) in enumerate(filtered, 1):
+        icon = "✅" if mr.compatibilita == "alta" else "🟡"
+        compat = mr.compatibilita.upper()
+        print(f"  [{i}/{totale}] {icon} [{compat}] {bando.titolo[:50]} — {bando.scadenza}")
 
     if args.dry_run:
         payload = build_digest_payload(filtered)
