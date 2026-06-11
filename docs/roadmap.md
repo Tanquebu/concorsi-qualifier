@@ -133,8 +133,8 @@
 - `pytest tests/test_collector.py::test_compute_hash_different_date` — stessa URL, data diversa → hash diverso
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_
+- [x] 🧪 Validato — _Tester_ — 3/3 verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -157,8 +157,8 @@
 - `pytest tests/test_collector.py::test_get_known_hashes` — hash inserito trovato; DB vuoto → set vuoto
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `CollectorRun` definito in `collector/db.py`; `get_known_hashes` filtra per fonte
+- [x] 🧪 Validato — _Tester_ — 5/5 verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -181,8 +181,8 @@
 - `pytest tests/test_collector.py::test_download_pdf_mock` — risposta con `Content-Type: application/pdf` → file `.pdf`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — dedup via hash `url+today`; content-type detection per html/pdf
+- [x] 🧪 Validato — _Tester_ — testato via mock in `test_run_collector_mock`
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -204,8 +204,8 @@
 - `mypy src/collector/` — zero errori
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_
+- [x] 🧪 Validato — _Tester_ — 2/2 verde; `mypy src/collector/` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -248,8 +248,8 @@
 - `pytest tests/test_parser.py::test_pdf_text_corrotto` — file binario corrotto → `None` senza crash
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — pdfplumber primario, pypdf fallback; gestione eccezioni silente
+- [x] 🧪 Validato — _Tester_ — test corrotto e nonexistent verdi; test su fixture reale rinviato a [PARSER-5]
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -271,8 +271,8 @@
 - Verifica dipendenza Tesseract installata: `tesseract --version` e `tesseract --list-langs | grep ita`
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — usa `pdf2image` (aggiunta come dipendenza) + pytesseract; threshold 50 char
+- [x] 🧪 Validato — _Tester_ — testato via mock in fallback chain; test su fixture reale rinviato a [PARSER-5]
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -296,8 +296,8 @@
 - `pytest tests/test_parser.py::test_fallback_html` — file `.html` → `parse_method="html"`, testo non vuoto
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — `ParseResult` come classe; HTML via BeautifulSoup (tag nav/footer rimossi)
+- [x] 🧪 Validato — _Tester_ — 4/4 verde
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
@@ -318,8 +318,8 @@
 - `mypy src/parser/` — zero errori
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_
+- [x] 🧪 Validato — _Tester_ — 2/2 verde; `mypy src/parser/` zero errori
 - [ ] 🔁 Re-work: *(nota)*
 
 ---

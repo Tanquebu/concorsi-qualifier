@@ -22,7 +22,8 @@ dependencies = [
     "pypdf>=4.3",
     # OCR fallback
     "pytesseract>=0.3",
-    "Pillow>=10.3",                # richiesto da pytesseract
+    "pdf2image>=1.17",             # PDF → PIL images per OCR
+    "Pillow>=10.3",                # richiesto da pytesseract e pdf2image
     # Storage
     "aiosqlite>=0.20",             # accesso async a SQLite
     # HTTP
@@ -33,6 +34,7 @@ dependencies = [
     "python-dateutil>=2.9",
     "tenacity>=8.3",               # retry con backoff per LLM calls
     "rich>=13.7",                  # output CLI leggibile
+    "beautifulsoup4>=4.12",        # parsing HTML nel parser
 ]
 
 [project.optional-dependencies]
