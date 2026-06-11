@@ -1,0 +1,15 @@
+sources:
+  - nome: InPA
+    url: https://www.inpa.gov.it/bandi-di-concorso/
+    tipo: html
+    frequenza: daily
+
+  - nome: RIPAM
+    url: https://www.ripam.cloud/bandi/
+    tipo: html
+    frequenza: daily
+
+  - nome: Comune di Milano
+    url: https://www.comune.milano.it/aree-tematiche/lavoro/concorsi-e-avvisi
+    tipo: html
+    frequenza: weekly

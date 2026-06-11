@@ -66,6 +66,16 @@ Il LLM non prende mai decisioni di matching. L'output è auditabile e riproducib
 
 ---
 
+## Valenza dual-use (piano B)
+
+Oltre alla funzione portfolio (case study AI), questo progetto è un **seme di business** nel piano B di contingenza (`piano-b.md` §3, nel workspace di pianificazione). Guardrail da rispettare durante lo sviluppo:
+
+- **Motore generico, non inchiodato sui bandi.** Tenere la pipeline (collector → parser → extractor → reporter) separata dalle parti specifiche del dominio "bandi" (`Bando`, checklist del `matcher`), così che ripuntare il motore su un altro verticale documentale (es. gare d'appalto, ciclo passivo) a switch attivato sia economico. Separabilità architetturale ora; un solo verticale (bandi) implementato. Non costruire il secondo verticale adesso.
+- **Niente lavoro "solo business" in fase portfolio.** No multi-utente, no billing, no feature B2B (il `PostgreSQL` multi-tenant resta V2/post-switch come già segnato nello stack opzionale).
+- **Kill criteria:** se a validazione fatta nessun buyer B2B conferma il dolore a un prezzo sostenibile, resta solo portfolio. Va benissimo così.
+
+---
+
 ## Convenzioni di codice
 
 - **Pydantic v2** per tutti i modelli dati (`Bando`, `CandidatoProfilo`, `MatchResult`, `CheckItem`).

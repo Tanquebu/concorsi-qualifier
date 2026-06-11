@@ -1,12 +1,12 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "concorsi-qualifier"
 version = "0.1.0"
 description = "AI-powered monitoring and qualification system for Italian public job competitions"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     # Scraping
     "crawlee>=0.4",
