@@ -1,9 +1,19 @@
+import shutil
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from src.parser import ParseResult, parse
 from src.parser.fallback_chain import run_fallback_chain
 from src.parser.pdf_text import extract_text_pdf
+
+_FIXTURE_DIR = Path(__file__).parent / "fixtures" / "parser"
+_PDF_SCANSIONATO = _FIXTURE_DIR / "Digitalizzato_20260611-0914.pdf"
+_PDF_BANDO = _FIXTURE_DIR / "bando fads f..pdf"
+_HTML_BANDO = _FIXTURE_DIR / "bando_sample.html"
+
+_TESSERACT_AVAILABLE = shutil.which("tesseract") is not None
 
 # --- pdf_text ---
 
@@ -62,6 +72,34 @@ def test_fallback_html(tmp_path: Path) -> None:
     assert result.parse_method == "html"
     assert "Concorso" in result.testo
     assert result.testo != ""
+
+
+# --- fixture reali ---
+
+def test_parse_real_html_bando() -> None:
+    result = parse(_HTML_BANDO)
+    assert result.parse_method == "html"
+    assert len(result.testo) > 50
+    assert "concorso" in result.testo.lower() or "informatico" in result.testo.lower()
+
+
+def test_parse_real_pdf_scansionato_no_crash() -> None:
+    result = parse(_PDF_SCANSIONATO)
+    assert isinstance(result, ParseResult)
+    assert result.parse_method in ("pdf_text", "pdf_ocr", "parse_failed")
+
+
+def test_parse_real_pdf_bando_no_crash() -> None:
+    result = parse(_PDF_BANDO)
+    assert isinstance(result, ParseResult)
+    assert result.parse_method in ("pdf_text", "pdf_ocr", "parse_failed")
+
+
+@pytest.mark.skipif(not _TESSERACT_AVAILABLE, reason="tesseract non installato")
+def test_parse_real_pdf_scansionato_ocr() -> None:
+    result = parse(_PDF_SCANSIONATO)
+    assert result.parse_method == "pdf_ocr"
+    assert len(result.testo) > 50
 
 
 # --- interfaccia pubblica ---

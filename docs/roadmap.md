@@ -339,8 +339,8 @@
 - `pytest tests/test_parser.py -v` — tutti i test verdi, nessuno skipped
 
 **Stato:**
-- [ ] ✅ Completato — _Esecutore_
-- [ ] 🧪 Validato — _Tester_
+- [x] ✅ Completato — _Esecutore_ — 2 PDF scansionati + HTML reale; test OCR con `skipif` se tesseract assente
+- [x] 🧪 Validato — _Tester_ — 11/12 verde, 1 skipped (OCR — tesseract non installato); no crash su file reali
 - [ ] 🔁 Re-work: *(nota)*
 
 ---
