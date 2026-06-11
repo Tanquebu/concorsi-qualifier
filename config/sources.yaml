@@ -13,13 +13,14 @@ sources:
       - manutenzione sul portale
       - passaggio del portale
 
-  # RIPAM è una SPA Angular — richiede Playwright per il rendering JS (TODO: S5)
+  # RIPAM/Formez: SPA Angular + Sitefinity CMS, nessuna API pubblica accessibile.
+  # Richiede Playwright per il rendering JS. MVP: escluso, InPA Portale copre già 1700+ bandi.
   # - nome: RIPAM
   #   url: https://www.ripam.cloud/bandi/
-  #   tipo: html
+  #   tipo: playwright  # TODO: implementare tipo playwright (V2)
   #   frequenza: daily
 
-  # Comune di Milano blocca i crawler (403) — commentato fino a soluzione
+  # Comune di Milano: risponde 403 ai crawler — escluso fino a soluzione.
   # - nome: Comune di Milano
   #   url: https://www.comune.milano.it/aree-tematiche/lavoro/concorsi-e-avvisi
   #   tipo: html
