@@ -2,12 +2,22 @@
 import argparse
 import json
 import logging
+import sqlite3
 from pathlib import Path
 
+import src.env  # noqa: F401
 from src.extractor import extract
 from src.parser import parse
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+
+def _already_extracted(bando_id: str, db_path: Path) -> bool:
+    if not db_path.exists():
+        return False
+    with sqlite3.connect(db_path) as conn:
+        row = conn.execute("SELECT 1 FROM bandi WHERE id = ?", (bando_id,)).fetchone()
+    return row is not None
 
 
 def main() -> None:
@@ -16,6 +26,7 @@ def main() -> None:
     )
     parser.add_argument("--raw", default="data/raw", type=Path, metavar="DIR")
     parser.add_argument("--db", default="concorsi.db", type=Path, metavar="PATH")
+    parser.add_argument("--force", action="store_true", help="Ri-estrai anche i bandi già in DB")
     args = parser.parse_args()
 
     meta_files = sorted(args.raw.glob("*.meta.json"))
@@ -33,6 +44,10 @@ def main() -> None:
         raw_file = args.raw / f"{file_hash}.{meta['ext']}"
 
         prefix = f"[{i}/{totale}]"
+
+        if not args.force and _already_extracted(file_hash, args.db):
+            skip += 1
+            continue
 
         if not raw_file.exists():
             print(f"  {prefix} SKIP {file_hash} — file raw mancante")

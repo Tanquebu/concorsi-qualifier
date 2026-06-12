@@ -66,7 +66,7 @@ def _download_wordpress(
     today = str(date.today())
 
     api_url = f"{base_url}/wp-json/wp/v2/posts"
-    params = {
+    params: dict[str, str | int] = {
         "per_page": per_page,
         "_fields": "id,title,link,date,content,categories",
         "orderby": "date",

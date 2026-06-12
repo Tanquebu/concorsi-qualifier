@@ -2,6 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
+import src.env  # noqa: F401
 from src.collector import run_collector
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")

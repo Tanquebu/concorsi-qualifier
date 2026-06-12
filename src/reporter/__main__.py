@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+import src.env  # noqa: F401
 from src.extractor.models import Bando
 from src.matcher.models import CheckItem, MatchResult
 from src.reporter import generate_report
@@ -47,7 +48,8 @@ def _load_pairs(db_path: Path) -> list[tuple[MatchResult, Bando]]:
                       b.testo_raw as _testo_raw, b.status as _bstatus,
                       b.created_at as _bcreated_at
                FROM match_results mr
-               JOIN bandi b ON mr.bando_id = b.id"""
+               JOIN bandi b ON mr.bando_id = b.id
+               WHERE mr.compatibilita IN ('alta', 'media')"""
         ).fetchall()
     for row in rows:
         d = dict(row)

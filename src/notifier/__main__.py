@@ -5,6 +5,7 @@ import logging
 import sqlite3
 from pathlib import Path
 
+import src.env  # noqa: F401
 from src.extractor.models import Bando
 from src.matcher.models import CheckItem, MatchResult
 from src.notifier import filter_bandi, send_digest

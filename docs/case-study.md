@@ -122,6 +122,16 @@ la scadenza è ampiamente nei termini.
 
 ---
 
+### 4. Schede generate solo per i bandi rilevanti
+
+Il `reporter` chiama Ollama e scrive su disco solo per bandi con compatibilità `alta` o `media`. I bandi `bassa` vengono esclusi prima della chiamata al modello.
+
+Una spiegazione testuale di perché un bando è incompatibile non aggiunge valore al candidato — la checklist con gli esiti `fail` è già sufficiente e leggibile. Su 579 bandi analizzati in un run reale: 10 `alta`, 546 `media`, 23 `bassa`. Generare schede per i 23 `bassa` significherebbe 23 chiamate Ollama e altrettanti file su disco senza utilità.
+
+Il filtro vive nella query SQLite di `reporter/__main__.py`, non nell'interfaccia pubblica `generate_report()`, che resta generica. In un contesto di debug o audit è sufficiente chiamarla direttamente con qualsiasi `MatchResult`.
+
+---
+
 ## Cosa non fa (by design)
 
 - **Non invia candidature automaticamente** — human-in-the-loop per ogni azione verso l'esterno

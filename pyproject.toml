@@ -36,6 +36,7 @@ dependencies = [
     "tenacity>=8.3",               # retry con backoff per LLM calls
     "rich>=13.7",                  # output CLI leggibile
     "beautifulsoup4>=4.12",        # parsing HTML nel parser
+    "python-dotenv>=1.0",          # caricamento variabili da .env
 ]
 
 [project.optional-dependencies]

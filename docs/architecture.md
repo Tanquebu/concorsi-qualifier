@@ -74,6 +74,7 @@ La separazione cloud/locale è architetturale: `extractor` usa sempre OpenRouter
 - **Deduplicazione hash-based senza DB complesso**: ogni bando è identificato da `hash(url + data_pubblicazione)`; il collector non reingerisce bandi già visti senza necessità di query relazionali articolate.
 - **SQLite come bus tra moduli**: i moduli non si chiamano direttamente — ogni modulo scrive sul DB e il successivo legge da lì. Questo rende ogni componente sostituibile in isolamento senza toccare le interfacce degli altri.
 - **Human-in-the-loop by design, non per policy**: nessun modulo ha la capacità tecnica di inviare candidature o prendere decisioni vincolanti sui requisiti di ammissione. Il disclaimer è hardcoded nel template del reporter, non opzionale.
+- **Reporter limitato a compatibilità ≥ media**: il `reporter` genera schede Markdown e chiama Ollama solo per i bandi con esito `alta` o `media`. I bandi `bassa` sono già esclusi dalla pipeline utile — generare una spiegazione testuale per un bando incompatibile è lavoro sprecato (Ollama call + I/O disco) senza nessun valore per il candidato. Il filtraggio avviene nella query SQLite in `reporter/__main__.py`, non nell'interfaccia pubblica `generate_report()`, che resta generica e testabile su qualsiasi `MatchResult`.
 
 ---
 
