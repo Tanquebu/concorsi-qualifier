@@ -84,26 +84,38 @@ def test_build_payload_structure() -> None:
     bando = _bando()
     match = _match()
     payload = build_digest_payload([(bando, match)])
-    assert "html" in payload
-    assert "plain_text" in payload
-    assert "bandi" in payload
+    assert "data" in payload
+    assert "totale" in payload
+    assert "alta" in payload
+    assert "media" in payload
 
 
 def test_build_payload_empty() -> None:
     payload = build_digest_payload([])
-    assert payload["bandi"] == []
-    assert payload["html"] == ""
-    assert payload["plain_text"] == ""
+    assert payload["alta"] == []
+    assert payload["media"] == []
+    assert payload["totale"] == 0
 
 
 def test_build_payload_content() -> None:
     bando = _bando(titolo="Concorso Test", ente="Ente Test")
     payload = build_digest_payload([(bando, _match())])
-    html = str(payload["html"])
-    plain = str(payload["plain_text"])
-    assert "Concorso Test" in html
-    assert "Concorso Test" in plain
-    assert "ALTA" in html or "alta" in html
+    assert payload["totale"] == 1
+    alta = list(payload["alta"])
+    assert len(alta) == 1
+    assert alta[0]["titolo"] == "Concorso Test"
+    assert alta[0]["ente"] == "Ente Test"
+
+
+def test_build_payload_separates_alta_media() -> None:
+    bando_a = _bando(titolo="Bando Alta")
+    match_a = _match(compatibilita="alta")
+    bando_m = _bando(titolo="Bando Media")
+    match_m = _match(compatibilita="media")
+    payload = build_digest_payload([(bando_a, match_a), (bando_m, match_m)])
+    assert payload["totale"] == 2
+    assert len(list(payload["alta"])) == 1
+    assert len(list(payload["media"])) == 1
 
 
 # --- send_digest ---
@@ -123,7 +135,8 @@ def test_send_digest_calls_webhook() -> None:
     mock_post.assert_called_once()
     _, kwargs = mock_post.call_args
     assert "json" in kwargs
-    assert "bandi" in kwargs["json"]
+    assert "alta" in kwargs["json"]
+    assert "media" in kwargs["json"]
 
 
 def test_send_digest_webhook_down() -> None:

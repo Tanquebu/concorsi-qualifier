@@ -24,41 +24,43 @@ def filter_bandi(
     return out
 
 
+def _bando_item(bando: Bando, match: MatchResult) -> dict[str, object]:
+    return {
+        "id": bando.id,
+        "titolo": bando.titolo,
+        "ente": bando.ente,
+        "scadenza": str(bando.scadenza) if bando.scadenza else "n.d.",
+        "compatibilita": match.compatibilita,
+        "url": bando.url,
+    }
+
+
 def build_digest_payload(
     filtered: list[tuple[Bando, MatchResult]],
 ) -> dict[str, object]:
-    """Costruisce il payload per il webhook con lista bandi, HTML e plain text."""
+    """Costruisce il payload strutturato per il webhook.
+
+    Separa alta da media per consentire al consumer (n8n) di formattare
+    messaggi compatti — i bandi 'alta' in dettaglio, i 'media' come conteggio.
+    Questo evita di superare il limite di 4096 caratteri di Telegram anche
+    con centinaia di bandi.
+    """
     if not filtered:
-        return {"bandi": [], "html": "", "plain_text": ""}
+        return {"data": str(date.today()), "alta": [], "media": [], "totale": 0}
 
-    plain_lines: list[str] = ["Digest bandi di concorso\n"]
-    html_parts: list[str] = ["<h1>Digest bandi di concorso</h1><ul>"]
+    alta: list[dict[str, object]] = []
+    media: list[dict[str, object]] = []
 
-    items: list[dict[str, object]] = []
     for bando, match in filtered:
-        item: dict[str, object] = {
-            "id": bando.id,
-            "titolo": bando.titolo,
-            "ente": bando.ente,
-            "scadenza": str(bando.scadenza) if bando.scadenza else "n.d.",
-            "compatibilita": match.compatibilita,
-            "url": bando.url,
-        }
-        items.append(item)
+        item = _bando_item(bando, match)
+        if match.compatibilita == "alta":
+            alta.append(item)
+        else:
+            media.append(item)
 
-        plain_lines.append(
-            f"- [{match.compatibilita.upper()}] {bando.titolo} — {bando.ente}"
-            f" | scadenza: {item['scadenza']} | {bando.url}"
-        )
-        html_parts.append(
-            f"<li><strong>[{match.compatibilita.upper()}]</strong> "
-            f"<a href='{bando.url}'>{bando.titolo}</a> — {bando.ente}"
-            f" | scadenza: {item['scadenza']}</li>"
-        )
-
-    html_parts.append("</ul>")
     return {
-        "bandi": items,
-        "html": "\n".join(html_parts),
-        "plain_text": "\n".join(plain_lines),
+        "data": str(date.today()),
+        "totale": len(filtered),
+        "alta": alta,
+        "media": media,
     }
