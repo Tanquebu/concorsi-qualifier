@@ -856,3 +856,21 @@ python3 -m src.reporter
 - [ ] `pytest` verde su tutti i moduli
 - [ ] `mypy src/` zero errori
 - [ ] README con esempio I/O reale
+
+---
+
+## Backlog post-MVP
+
+### [PERF-1] Stima e tracciamento durata per step di pipeline
+
+**Motivazione:** su run reali (500+ bandi) i moduli `extractor` e `reporter` richiedono minuti. L'utente non ha visibilità su quanto manca. Obiettivo: mostrare una stima ETA simile a Jenkins ("step X: ~2 min rimanenti").
+
+**Approccio:**
+- Registrare in SQLite `started_at` / `completed_at` / `n_items` per ogni run di ogni modulo (estendere la tabella `collector_runs` o aggiungere `pipeline_runs`)
+- Al successivo run, calcolare la media dei tempi per item dei run precedenti e proiettare l'ETA
+- Mostrare inline nel counter: `[42/579] ✅ OK — ETA ~4 min`
+
+**Note:**
+- Il dato storico diventa utile solo dopo 2–3 run; al primo run si mostra solo il tempo trascorso
+- La stima è per item omogenei (extractor: 1 chiamata OpenRouter/item; reporter: 1 chiamata Ollama/item) — il collector è troppo variabile per stimare
+- Non richiede dipendenze aggiuntive (SQLite stdlib)

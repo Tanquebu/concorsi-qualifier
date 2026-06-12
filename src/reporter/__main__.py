@@ -5,11 +5,6 @@ import logging
 import sqlite3
 from pathlib import Path
 
-from rich import box
-from rich.console import Console
-from rich.table import Table
-from rich.text import Text
-
 import src.env  # noqa: F401
 from src.extractor.models import Bando
 from src.matcher.models import CheckItem, MatchResult
@@ -17,17 +12,7 @@ from src.reporter import generate_report
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-_COMPAT_CONFIG: dict[str, tuple[str, str]] = {
-    "alta":          ("✅ ALTA",   "bold green"),
-    "media":         ("🟡 MEDIA",  "bold yellow"),
-    "bassa":         ("❌ BASSA",  "bold red"),
-    "da_verificare": ("❓ DA_VER", "dim"),
-}
-
-
-def _compat_cell(compat: str) -> Text:
-    label, style = _COMPAT_CONFIG.get(compat, (compat, ""))
-    return Text(label, style=style)
+_ESITO_ICON = {"alta": "✅", "media": "🟡", "bassa": "❌", "da_verificare": "❓"}
 
 
 def _load_pairs(db_path: Path) -> list[tuple[MatchResult, Bando]]:
@@ -91,6 +76,7 @@ def main() -> None:
     )
     parser.add_argument("--db", default="concorsi.db", type=Path, metavar="PATH")
     parser.add_argument("--output", default="data/processed", type=Path, metavar="DIR")
+    parser.add_argument("--force", action="store_true", help="Rigenera schede già esistenti")
     args = parser.parse_args()
 
     pairs = _load_pairs(args.db)
@@ -98,45 +84,29 @@ def main() -> None:
         print("Nessun match_result trovato. Esegui prima matcher.")
         return
 
-    console = Console()
-    table = Table(box=box.SIMPLE, show_header=True, header_style="bold", padding=(0, 1))
-    table.add_column("#", style="dim", width=3, justify="right")
-    table.add_column("Esito", width=12)
-    table.add_column("Ente", width=22, no_wrap=True)
-    table.add_column("Titolo", width=48, no_wrap=True)
-    table.add_column("Scadenza", width=10)
-    table.add_column("File", width=22, style="dim", no_wrap=True)
-
     totale = len(pairs)
-    errori = 0
-    for i, (mr, bando) in enumerate(pairs, 1):
-        try:
-            path = generate_report(mr, bando, output_dir=args.output)
-            scadenza = str(bando.scadenza) if bando.scadenza else "—"
-            table.add_row(
-                str(i),
-                _compat_cell(mr.compatibilita),
-                (bando.ente or "—")[:22],
-                (bando.titolo or "—")[:48],
-                scadenza,
-                path.name,
-            )
-        except Exception as exc:
-            errori += 1
-            table.add_row(
-                str(i),
-                Text("ERR", style="bold red"),
-                "—",
-                (bando.id or "")[:48],
-                "—",
-                str(exc)[:22],
-            )
+    print(f"Schede da generare: {totale}\n")
+    ok = skip = err = 0
 
-    console.print(f"\n[bold]Schede da generare:[/bold] {totale}")
-    console.print(table)
-    if errori:
-        console.print(f"[bold red]{errori} errori[/bold red]")
-    console.print(f"[dim]Output → {args.output}/[/dim]\n")
+    for i, (mr, bando) in enumerate(pairs, 1):
+        dest = args.output / f"{bando.id}.md"
+        icon = _ESITO_ICON.get(mr.compatibilita, "?")
+        prefix = f"  [{i}/{totale}] {icon}"
+
+        if not args.force and dest.exists():
+            skip += 1
+            continue
+
+        try:
+            generate_report(mr, bando, output_dir=args.output)
+            print(f"{prefix} OK   {bando.titolo[:55]}")
+            ok += 1
+        except Exception as exc:
+            print(f"{prefix} ERR  {exc}")
+            err += 1
+
+    print(f"\nReport: {ok} generati, {skip} già esistenti, {err} errori")
+    print(f"Output → {args.output}/")
 
 
 if __name__ == "__main__":
