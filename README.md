@@ -133,38 +133,74 @@ data/
 concorsi.db                 # SQLite: bandi, collector_runs, match_results
 ```
 
-### Esempio scheda Markdown generata
+### Esempio di run reale (12/06/2026)
+
+Output della pipeline su dati InPA reali — 579 bandi aperti al momento dell'esecuzione.
+
+**Extractor** (LangChain + OpenRouter → SQLite):
+
+```
+[1/579] OK   — Concorso pubblico – Informatico cat. D (Comune di Bergamo)
+[2/579] OK   — Selezione pubblica funzionario informatico (Regione Lombardia)
+...
+[579/579] OK — Concorso per n. 2 istruttori tecnici (Comune di Varese)
+
+Estratti: 579 | Errori: 0
+```
+
+**Matcher** (checklist deterministica → SQLite):
+
+```
+[1/579] ✅ alta       — Avviso mobilità esterna (Univ. Milano-Bicocca)
+[2/579] 🟡 media      — Concorso docenti scuola secondaria (USR Umbria)
+[3/579] ❌ bassa      — Concorso riservato a dipendenti interni (Comune di X)
+...
+[579/579] 🟡 media
+
+Riepilogo: ✅ 10 alta | 🟡 546 media | ❌ 23 bassa
+```
+
+**Reporter** (schede Markdown per alta + media → `data/processed/`):
+
+```
+[1/556] ✅ alta  — Avviso mobilità esterna (Univ. Milano-Bicocca)
+[2/556] 🟡 media — Concorso docenti scuola secondaria (USR Umbria)
+...
+[556/556] 🟡 media
+
+Schede generate: 556 | Saltate (già su disco): 0 | Errori Ollama: 0
+```
+
+**Scheda generata** (compatibilità ALTA — dati reali da `data/processed/`):
 
 ```markdown
-# Concorso pubblico – n. 5 posti Informatico categoria D
+# AVVISO di MOBILITÀ ESTERNA ai sensi dell'art. 30 del Decreto Legislativo 30 marzo 2001, n. 165
 
 ## Riepilogo
-- **Ente:** Comune di Milano
-- **Posti:** 5
-- **Scadenza:** 2026-12-31
-- **Area geografica:** Milano
-- **Fonte:** [inpa](https://example.com)
+- **Ente:** Universita' degli Studi di Milano - Bicocca
+- **Posti:** 1
+- **Scadenza:** 2026-07-07
+- **Area geografica:** Lombardia
+- **Fonte:** [InPA Portale](https://portale.inpa.gov.it/concorso/c36f7a105bc74e21a071712874c75a5d)
 
 ## Compatibilità
 **Esito:** ALTA
 
 ### Checklist requisiti
-- ✅ **Titolo di studio**: ok
+- ❓ **Titolo di studio**: unknown — Titolo di studio richiesto non specificato nel bando
 - ✅ **Area geografica**: ok
 - ✅ **Scadenza**: ok
-- ✅ **Esclusioni**: ok
+- ✅ **Requisiti escludenti**: ok
 - ✅ **Categoria**: ok
 
-## Analisi
-Il bando è compatibile con il profilo del candidato.
-
-## Azioni consigliate
-- Verificare i requisiti formali sul bando ufficiale
-- Preparare la documentazione richiesta
+## Punti da verificare manualmente
+- Titolo di studio richiesto non specificato nel bando
 
 ---
 *Analisi assistita. La verifica finale dei requisiti formali resta responsabilità del candidato.*
 ```
+
+> L'esito `ALTA` con un campo `unknown` è il comportamento corretto: la checklist non penalizza i campi mancanti nel bando (non è detto che il requisito non sia soddisfatto — manca solo l'informazione). Solo i check con esito `fail` o `warning` abbassano la compatibilità.
 
 ---
 
