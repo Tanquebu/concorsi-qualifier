@@ -62,7 +62,7 @@ La separazione cloud/locale è architetturale: `extractor` usa sempre OpenRouter
 | `extractor` | Testo bando + `parse_method` | `Bando` (Pydantic v2) persistito in SQLite | LangChain, langchain-openai, Pydantic v2, tenacity |
 | `matcher` | `Bando` da SQLite + `CandidatoProfilo` da YAML locale | `MatchResult` (Pydantic v2) persistito in SQLite | Pydantic v2, python-dateutil |
 | `reporter` | `MatchResult` + `Bando` da SQLite | Scheda Markdown in `data/processed/` | LangChain, langchain-ollama, Ollama (locale o remoto) |
-| `notifier` | Schede Markdown filtrate per compatibilità | Payload email digest (HTML/plain) | n8n / Make (esterno via webhook), httpx |
+| `notifier` | Coppie `(Bando, MatchResult)` filtrate | Payload JSON strutturato (`alta`/`media` separati) → POST webhook n8n → Telegram | httpx, n8n istanza intake (`concorsi-digest`) |
 
 ---
 
@@ -75,6 +75,8 @@ La separazione cloud/locale è architetturale: `extractor` usa sempre OpenRouter
 - **SQLite come bus tra moduli**: i moduli non si chiamano direttamente — ogni modulo scrive sul DB e il successivo legge da lì. Questo rende ogni componente sostituibile in isolamento senza toccare le interfacce degli altri.
 - **Human-in-the-loop by design, non per policy**: nessun modulo ha la capacità tecnica di inviare candidature o prendere decisioni vincolanti sui requisiti di ammissione. Il disclaimer è hardcoded nel template del reporter, non opzionale.
 - **Reporter limitato a compatibilità ≥ media**: il `reporter` genera schede Markdown e chiama Ollama solo per i bandi con esito `alta` o `media`. I bandi `bassa` sono già esclusi dalla pipeline utile — generare una spiegazione testuale per un bando incompatibile è lavoro sprecato (Ollama call + I/O disco) senza nessun valore per il candidato. Il filtraggio avviene nella query SQLite in `reporter/__main__.py`, non nell'interfaccia pubblica `generate_report()`, che resta generica e testabile su qualsiasi `MatchResult`.
+- **Payload notifier strutturato per livello**: il notifier invia un payload JSON con `alta` e `media` come liste separate (non una lista flat). Questo permette al consumer n8n di formattare messaggi Telegram compatti — bandi `alta` in dettaglio, `media` come conteggio — senza superare il limite di 4096 caratteri imposto dall'API Telegram.
+- **Dedup e riprendibilità su ogni step**: `extractor` salta i bandi già in SQLite, `reporter` salta le schede già su disco. Un run interrotto riparte dal punto di interruzione senza rielaborare il lavoro già fatto. Flag `--force` disponibile su entrambi per forzare la riesecuzione.
 
 ---
 

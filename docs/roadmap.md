@@ -850,11 +850,11 @@ python3 -m src.reporter
 ```
 
 **Criteri MVP done:**
-- [ ] SQLite con ≥ 50 bandi normalizzati
-- [ ] ≥ 10 schede Markdown in `data/processed/`
-- [ ] Digest email inviato via webhook (anche dry-run locale)
-- [ ] `pytest` verde su tutti i moduli
-- [ ] `mypy src/` zero errori
+- [x] SQLite con ≥ 50 bandi normalizzati — 579 bandi (run 12/06/2026)
+- [x] ≥ 10 schede Markdown in `data/processed/` — 579 schede
+- [x] Digest inviato via webhook — Telegram via n8n `concorsi-digest` (esecuzione 745, success)
+- [x] `pytest` verde su tutti i moduli — 110/110
+- [x] `mypy src/` zero errori
 - [ ] README con esempio I/O reale
 
 ---
