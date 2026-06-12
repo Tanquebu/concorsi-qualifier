@@ -19,6 +19,16 @@ env/
 .coverage
 htmlcov/
 
+# Fixture reali (PDF, HTML, JSON scaricati) — solo file sintetici in repo
+tests/fixtures/collector/*
+!tests/fixtures/collector/.gitkeep
+tests/fixtures/extractor/*
+!tests/fixtures/extractor/.gitkeep
+tests/fixtures/matcher/*
+!tests/fixtures/matcher/.gitkeep
+tests/fixtures/parser/*
+!tests/fixtures/parser/.gitkeep
+
 # Type checking
 .mypy_cache/
 
