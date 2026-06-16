@@ -15,11 +15,14 @@ mkdir -p data
   echo "--- Extractor ---"
   python -m src.extractor
 
+  echo "--- OCR worker (se coda non vuota) ---"
+  python ocr_worker.py
+
   echo "--- Matcher ---"
   python -m src.matcher
 
-  echo "--- OCR worker (se coda non vuota) ---"
-  python ocr_worker.py
+  echo "--- Reporter ---"
+  python -m src.reporter
 
   echo "--- Notifier ---"
   python -m src.notifier --days 30
