@@ -81,6 +81,7 @@ def _download_wordpress(
     nuovi: list[str] = []
 
     exclude: list[str] = [kw.lower() for kw in source.get("exclude_keywords", [])]
+    include: list[str] = [kw.lower() for kw in source.get("include_keywords", [])]
 
     for post in posts:
         post_url: str = post["link"]
@@ -93,6 +94,8 @@ def _download_wordpress(
         title = BeautifulSoup(post["title"]["rendered"], "html.parser").get_text()
 
         if exclude and any(kw in title.lower() for kw in exclude):
+            continue
+        if include and not any(kw in title.lower() for kw in include):
             continue
         body = post["content"]["rendered"]
 
@@ -112,6 +115,20 @@ def _download_wordpress(
         nuovi.append(file_hash)
 
     return nuovi
+
+
+_INPA_MEDIA_BASE = "https://portale.inpa.gov.it/api/media"
+
+
+def _download_allegato_pdf(media_id: str, dest: Path) -> None:
+    """Scarica un allegato PDF dal portale InPA. Fallisce silenziosamente."""
+    try:
+        r = httpx.get(f"{_INPA_MEDIA_BASE}/{media_id}", follow_redirects=True, timeout=30.0)
+        r.raise_for_status()
+        if "pdf" in r.headers.get("content-type", ""):
+            dest.write_bytes(r.content)
+    except Exception:
+        pass
 
 
 _INPA_PORTAL_API = (
@@ -143,63 +160,86 @@ def _download_inpa_portal(
         "enteRiferimentoName": "",
     }
 
-    resp = httpx.post(
-        _INPA_PORTAL_API,
-        params={"page": 0, "size": per_page},
-        json=body,
-        timeout=30.0,
-    )
-    resp.raise_for_status()
-    bandi = resp.json().get("content", [])
-
     raw_dir.mkdir(parents=True, exist_ok=True)
     nuovi: list[str] = []
+    _min_attivi_per_page = 5
 
-    for bando in bandi:
-        bando_id: str = bando["id"]
-        pub_date: str = (bando.get("dataPubblicazione") or today)[:10]
-        canonical_url = f"https://portale.inpa.gov.it/concorso/{bando_id}"
-        file_hash = compute_hash(canonical_url, pub_date)
-
-        if file_hash in known_hashes:
-            continue
-
-        titolo = bando.get("titolo", "")
-        enti = ", ".join(bando.get("entiRiferimento") or [])
-        sedi = ", ".join(bando.get("sedi") or [])
-        posti = bando.get("numPosti")
-        scadenza = (bando.get("dataScadenza") or "")[:10]
-        figura = bando.get("figuraRicercata", "")
-        tipo_proc = bando.get("tipoProcedura", "")
-        link_ext = bando.get("linkReindirizzamento") or ""
-        descrizione = bando.get("descrizione") or bando.get("descrizioneBreve") or ""
-
-        html = (
-            f"<html><head><title>{titolo}</title></head><body>"
-            f"<h1>{titolo}</h1>"
-            f"<p><strong>Ente:</strong> {enti}</p>"
-            f"<p><strong>Sede:</strong> {sedi}</p>"
-            f"<p><strong>Posti:</strong> {posti}</p>"
-            f"<p><strong>Scadenza domande:</strong> {scadenza}</p>"
-            f"<p><strong>Figura ricercata:</strong> {figura}</p>"
-            f"<p><strong>Tipo procedura:</strong> {tipo_proc}</p>"
-            + (f"<p><strong>Link candidatura:</strong> {link_ext}</p>" if link_ext else "")
-            + f"<div>{descrizione}</div>"
-            f"</body></html>"
+    page = 0
+    while True:
+        resp = httpx.post(
+            _INPA_PORTAL_API,
+            params={"page": page, "size": per_page},
+            json=body,
+            timeout=30.0,
         )
+        resp.raise_for_status()
+        data = resp.json()
+        bandi_page = data.get("content", [])
+        if not bandi_page:
+            break
 
-        dest = raw_dir / f"{file_hash}.html"
-        dest.write_text(html, encoding="utf-8")
+        attivi_page = [
+            b for b in bandi_page
+            if b.get("dataScadenza") and b["dataScadenza"] > today + "T"
+        ]
+        page += 1
+        if page > 1 and len(attivi_page) < _min_attivi_per_page:
+            break
 
-        meta = {
-            "url": canonical_url,
-            "fonte": fonte_nome,
-            "ext": "html",
-            "scraped_at": today,
-            "title": titolo,
-            "published": pub_date,
-        }
-        (raw_dir / f"{file_hash}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
-        nuovi.append(file_hash)
+        for bando in bandi_page:
+                bando_id: str = bando["id"]
+                pub_date: str = (bando.get("dataPubblicazione") or today)[:10]
+                canonical_url = f"https://www.inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/?concorso_id={bando_id}"
+                file_hash = compute_hash(canonical_url, pub_date)
+
+                if file_hash in known_hashes:
+                    continue
+
+                titolo = bando.get("titolo", "")
+                enti = ", ".join(bando.get("entiRiferimento") or [])
+                sedi = ", ".join(bando.get("sedi") or [])
+                posti = bando.get("numPosti")
+                scadenza = (bando.get("dataScadenza") or "")[:10]
+                figura = bando.get("figuraRicercata", "")
+                tipo_proc = bando.get("tipoProcedura", "")
+                link_ext = bando.get("linkReindirizzamento") or ""
+                descrizione = bando.get("descrizione") or bando.get("descrizioneBreve") or ""
+
+                html = (
+                    f"<html><head><title>{titolo}</title></head><body>"
+                    f"<h1>{titolo}</h1>"
+                    f"<p><strong>Ente:</strong> {enti}</p>"
+                    f"<p><strong>Sede:</strong> {sedi}</p>"
+                    f"<p><strong>Posti:</strong> {posti}</p>"
+                    f"<p><strong>Scadenza domande:</strong> {scadenza}</p>"
+                    f"<p><strong>Figura ricercata:</strong> {figura}</p>"
+                    f"<p><strong>Tipo procedura:</strong> {tipo_proc}</p>"
+                    + (f"<p><strong>Link candidatura:</strong> {link_ext}</p>" if link_ext else "")
+                    + f"<div>{descrizione}</div>"
+                    f"</body></html>"
+                )
+
+                dest = raw_dir / f"{file_hash}.html"
+                dest.write_text(html, encoding="utf-8")
+
+                # Scarica il PDF del bando principale se presente
+                allegati = bando.get("allegati") or []
+                for allegato in allegati:
+                    if allegato.get("tipo") == "BANDO_CONCORSO":
+                        media_id = allegato.get("mediaId")
+                        if media_id:
+                            _download_allegato_pdf(media_id, raw_dir / f"{file_hash}.allegato.pdf")
+                        break
+
+                meta = {
+                    "url": canonical_url,
+                    "fonte": fonte_nome,
+                    "ext": "html",
+                    "scraped_at": today,
+                    "title": titolo,
+                    "published": pub_date,
+                }
+                (raw_dir / f"{file_hash}.meta.json").write_text(json.dumps(meta), encoding="utf-8")
+                nuovi.append(file_hash)
 
     return nuovi

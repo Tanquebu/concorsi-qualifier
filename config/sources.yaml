@@ -12,6 +12,16 @@ sources:
     exclude_keywords:
       - manutenzione sul portale
       - passaggio del portale
+    include_keywords:
+      - concorso
+      - avviso
+      - selezione
+      - bando
+      - mobilità
+      - assunzione
+      - stabilizzazione
+      - interpello
+      - posto
 
   # RIPAM/Formez: SPA Angular + Sitefinity CMS, nessuna API pubblica accessibile.
   # Richiede Playwright per il rendering JS. MVP: escluso, InPA Portale copre già 1700+ bandi.

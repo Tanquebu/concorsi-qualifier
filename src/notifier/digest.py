@@ -16,10 +16,9 @@ def filter_bandi(
     for bando, match in results:
         if match.compatibilita not in _COMPATIBILITA_MINIMA:
             continue
-        if bando.scadenza is None or bando.scadenza > cutoff:
-            continue
-        if bando.scadenza < date.today():
-            continue
+        if bando.scadenza is not None:
+            if bando.scadenza < date.today() or bando.scadenza > cutoff:
+                continue
         out.append((bando, match))
     return out
 

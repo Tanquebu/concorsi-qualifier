@@ -16,6 +16,7 @@ def _get_llm() -> ChatOpenAI:
         api_key=api_key,
         model=os.environ.get("OPENROUTER_MODEL", "mistralai/mistral-small-3.2-24b-instruct"),
         temperature=0,
+        default_headers={"X-Title": "concorsi-qualifier"},
     )
 
 

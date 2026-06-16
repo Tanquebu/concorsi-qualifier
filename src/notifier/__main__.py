@@ -94,7 +94,8 @@ def main() -> None:
 
     if args.dry_run:
         payload = build_digest_payload(filtered)
-        print(f"\n--- Payload (dry-run) ---\n{payload['plain_text']}")
+        import json as _json
+        print(f"\n--- Payload (dry-run) ---\n{_json.dumps(payload, ensure_ascii=False, indent=2)}")
     else:
         send_digest(pairs, days_ahead=args.days)
 

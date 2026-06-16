@@ -180,7 +180,7 @@ def test_download_inpa_portal_mock(tmp_path: Path) -> None:
     meta = json.loads(meta_files[0].read_text())
     assert meta["fonte"] == "InPA Portale"
     assert meta["published"] == "2026-06-01"
-    assert "portale.inpa.gov.it" in meta["url"]
+    assert "www.inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/" in meta["url"]
 
     html_text = html_files[0].read_text()
     assert "Concorso OSS 2026" in html_text
@@ -196,7 +196,7 @@ def test_download_inpa_portal_deduplicates(tmp_path: Path) -> None:
 
     bando_id = "abc123"
     pub_date = "2026-06-01"
-    canonical_url = f"https://portale.inpa.gov.it/concorso/{bando_id}"
+    canonical_url = f"https://www.inpa.gov.it/bandi-e-avvisi/dettaglio-bando-avviso/?concorso_id={bando_id}"
     existing_hash = compute_hash(canonical_url, pub_date)
 
     fake_response = MagicMock()

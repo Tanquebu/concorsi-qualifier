@@ -86,6 +86,69 @@ Oltre alla funzione portfolio (case study AI), questo progetto è un **seme di b
 
 ---
 
+## Modificare il workflow concorsi-digest su intake
+
+Il workflow `concorsi-digest` gira sull'istanza n8n di **intake** (progetto separato). Per richiedere modifiche usa il sistema di change request — non modificare mai direttamente workflow n8n da questa sessione.
+
+### Quando serve
+
+- Il payload del notifier cambia formato
+- Serve un nuovo nodo (es. split messaggi, filtro, retry)
+- Cambia la logica di formattazione del digest
+
+### Procedura
+
+**1. Leggi lo stato attuale del workflow** (tool MCP di intake):
+```
+mcp__intake__n8n_get_workflow("concorsi-digest")
+mcp__intake__n8n_get_node("concorsi-digest", "nome-nodo")  # per il codice completo
+```
+
+**2. Prepara il `change_spec`** — JSON con le modifiche da applicare:
+```json
+{
+  "nodes_to_update": [
+    {"name": "nome-nodo-esistente", "new_js_code": "...codice JS completo..."}
+  ],
+  "nodes_to_add": [
+    {"name": "nuovo-nodo", "type": "n8n-nodes-base.code", "js_code": "...", "position": [x, y]}
+  ],
+  "connections_to_replace": {
+    "nodo-sorgente": {"main": [[{"node": "nodo-target", "type": "main", "index": 0}], []]}
+  },
+  "position_updates": {"nodo-da-spostare": [x, y]}
+}
+```
+Includi solo le chiavi rilevanti. Il codice JS nei nodi deve essere **completo** (non diff).
+
+**3. Sottometti la change request**:
+```
+mcp__intake__submit_change_request(
+  project="concorsi-qualifier",
+  workflow_name="concorsi-digest",
+  title="Breve descrizione",
+  description="Descrizione completa del problema e della modifica",
+  change_spec='{"nodes_to_update": [...]}'   # JSON come stringa
+)
+```
+Restituisce `{ok: true, airtable_id: "rec..."}` se accettata.
+
+**4. Monitora lo stato**:
+```
+mcp__intake__list_change_requests(project="concorsi-qualifier")
+mcp__intake__get_change_request("rec...")
+```
+
+Pipeline: `new` → `in_progress` → `completed` | `rejected` | `error` (entro ~30 min).
+
+### Vincoli di sicurezza (non derogabili)
+
+- **Non chiamare mai** strumenti che modificano workflow direttamente (nessun PUT/PATCH a n8n)
+- **Non toccare** workflow con nome `intake-*` — il tool `submit_change_request` li blocca server-side
+- Usa `mcp__intake__n8n_get_*` **solo in lettura** per capire la struttura corrente
+
+---
+
 ## Flusso dati (pipeline sequenziale MVP)
 
 ```

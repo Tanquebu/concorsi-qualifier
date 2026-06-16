@@ -1,6 +1,15 @@
+import re
 from datetime import date
 
 from src.matcher.models import CheckItem
+
+# Rileva contratti a durata fissa: "durata di 24 mesi", "durata biennale", "12 mesi prorogabili"
+_DURATA_FISSA_RE = re.compile(
+    r"durat\w{0,1}\s+(?:di\s+)?\d+\s*mesi"   # "durata di 24 mesi" + typo "durat di"
+    r"|durata\s+(?:annuale|biennale|triennale|quadriennale)"
+    r"|\d+\s+mesi\s+(?:rinnovabili|prorogabili)",
+    re.IGNORECASE,
+)
 
 _LIVELLI_TITOLO: dict[str, int] = {
     "dottorato": 4,
@@ -84,17 +93,101 @@ def check_scadenza(scadenza: date | None) -> CheckItem:
     return CheckItem(requisito="Scadenza", esito="ok")
 
 
-def check_esclusioni(requisiti: list[str], esclusioni: list[str]) -> CheckItem:
-    for requisito in requisiti:
-        r_low = requisito.lower()
+def check_esclusioni(
+    requisiti: list[str],
+    esclusioni: list[str],
+    titolo: str = "",
+    testo_raw: str = "",
+) -> CheckItem:
+    testi = requisiti + ([titolo] if titolo else [])
+    if testo_raw:
+        testi.append(testo_raw[:2000])
+    for testo in testi:
+        t_low = testo.lower()
         for esclusione in esclusioni:
-            if esclusione.lower() in r_low:
+            if esclusione.lower() in t_low:
                 return CheckItem(
                     requisito="Requisiti escludenti",
                     esito="fail",
-                    nota=f"Requisito escludente trovato: '{requisito}'",
+                    nota=f"Clausola escludente: '{esclusione}'",
                 )
+        if _DURATA_FISSA_RE.search(testo):
+            match = _DURATA_FISSA_RE.search(testo)
+            return CheckItem(
+                requisito="Requisiti escludenti",
+                esito="fail",
+                nota=f"Contratto a durata fissa: '{match.group(0)}'",
+            )
     return CheckItem(requisito="Requisiti escludenti", esito="ok")
+
+
+_ESPERIENZA_TRIGGERS: list[str] = [
+    "esperienza professionale",
+    "esperienza maturata",
+    "comprovata esperienza",
+    "comprovata competenza",
+    "esperienza nel ",
+    "esperienza nella ",
+    "esperienza nelle ",
+    "esperienza in ",
+    "esperienza di almeno",
+    "anni di esperienza",
+    "anni di attività",
+    "anzianità di servizio",
+]
+
+# Parole generiche che non indicano un dominio specifico
+_PAROLE_GENERICHE: set[str] = {
+    "anni", "mesi", "servizio", "lavoro", "lavorativa", "professionale",
+    "almeno", "anche", "non", "con", "per", "nei", "nelle", "degli",
+    "delle", "della", "dello", "nel", "nella", "pubblico", "privato",
+    "pubblica", "privata", "amministrazione", "settore", "ambito",
+    "attività", "incarico", "ruolo", "funzione", "qualificata", "comprovata",
+    "maturata", "documentata", "complessiva", "quinquennale", "triennale",
+    "biennale", "decennale", "pregressa", "precedente", "precedenti",
+    "analogo", "analoga", "simile", "equivalente", "continuativi",
+    "anzianità", "seniority", "essere", "avere", "possesso", "possedere",
+    "apprezzabile", "dimostrabile", "documentabile", "significativa",
+    "mansioni", "mansione", "categoria", "profilo", "figura", "livello",
+    "ovvero", "oppure", "quindi", "nonché", "ovvero", "nonche",
+}
+
+
+def check_esperienza_dominio(
+    requisiti: list[str],
+    settori: list[str],
+    parole_chiave: list[str],
+) -> CheckItem:
+    """Controlla se i requisiti di esperienza di dominio sono allineati con il profilo."""
+    profilo_kw = [kw.lower() for kw in settori + parole_chiave]
+
+    for req in requisiti:
+        r_low = req.lower()
+        if not any(trigger in r_low for trigger in _ESPERIENZA_TRIGGERS):
+            continue
+
+        # Estrae le parole significative del requisito (>5 chars, non generiche)
+        parole = [
+            w.strip("',;:.()") for w in r_low.split()
+            if len(w) > 5 and w.strip("',;:.()") not in _PAROLE_GENERICHE
+        ]
+        # Serve almeno 2 parole di dominio per considerare il requisito specifico
+        if len(parole) < 2:
+            continue
+
+        # Se almeno una parola chiave del profilo appare nel requisito → ok
+        if any(kw in r_low for kw in profilo_kw):
+            return CheckItem(requisito="Esperienza di dominio", esito="ok")
+
+        # Dominio specifico rilevato ma non corrisponde al profilo
+        dominio_esempio = " ".join(parole[:6])
+        return CheckItem(
+            requisito="Esperienza di dominio",
+            esito="warning",
+            nota=f"Esperienza richiesta in dominio non nel profilo: '{dominio_esempio}...'",
+        )
+
+    return CheckItem(requisito="Esperienza di dominio", esito="ok")
 
 
 def check_categoria(categoria: str | None, settori: list[str]) -> CheckItem:

@@ -5,6 +5,7 @@ from src.matcher.checks import (
     check_area_geografica,
     check_categoria,
     check_esclusioni,
+    check_esperienza_dominio,
     check_scadenza,
     check_titolo_studio,
 )
@@ -21,6 +22,10 @@ def aggregate_checks(
         return "da_verificare"
     if any(e == "fail" for e in esiti):
         return "bassa"
+    n_known = sum(1 for e in esiti if e != "unknown")
+    if n_known < 2:
+        # Informazioni insufficienti: solo un check con esito noto (tipicamente nessuna esclusione)
+        return "da_verificare"
     if any(e == "warning" for e in esiti):
         return "media"
     return "alta"
@@ -31,8 +36,11 @@ def match(bando: Bando, profilo: CandidatoProfilo) -> MatchResult:
         check_titolo_studio(bando.titolo_studio_richiesto, profilo.titolo_studio),
         check_area_geografica(bando.area_geografica, profilo.aree_preferite),
         check_scadenza(bando.scadenza),
-        check_esclusioni(bando.requisiti_formali, profilo.esclusioni),
+        check_esclusioni(
+            bando.requisiti_formali, profilo.esclusioni, bando.titolo, bando.testo_raw
+        ),
         check_categoria(bando.categoria, profilo.settori),
+        check_esperienza_dominio(bando.requisiti_formali, profilo.settori, profilo.parole_chiave),
     ]
     compatibilita = aggregate_checks(checks)
     da_verificare = [c.nota for c in checks if c.esito == "unknown" and c.nota]
