@@ -40,9 +40,8 @@ tests/fixtures/parser/*
 .env.*
 *.env
 
-# Dati scaricati — non tracciare snapshot e schede generate
-data/raw/
-data/processed/
+# Dati operativi — raw, processed, log e code OCR non vanno in repo
+data/
 
 # Config candidato — dati privati, mai in repo
 config/profilo_candidato.yaml
