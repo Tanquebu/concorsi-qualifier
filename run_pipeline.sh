@@ -1,34 +1,62 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 cd /home/max/projects/concorsi-qualifier
 source .venv/bin/activate
 
 LOG="data/pipeline_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p data
+exec 1> >(tee -a "$LOG") 2>&1
 
-{
-  echo "=== Pipeline avviata: $(date) ==="
+RUN_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
+PY="python pipeline_db_helper.py"
 
-  echo "--- Collector ---"
-  python -m src.collector
+$PY init "$RUN_ID"
 
-  echo "--- Extractor ---"
-  python -m src.extractor
+_step=""
+_on_exit() {
+  local code=$?
+  if [ $code -ne 0 ]; then
+    $PY done "$RUN_ID" error "$_step" "exit code $code" 2>/dev/null || true
+  fi
+  # Mantieni solo gli ultimi 14 log
+  ls -t data/pipeline_*.log 2>/dev/null | tail -n +15 | xargs -r rm
+}
+trap '_on_exit' EXIT
 
-  echo "--- OCR worker (se coda non vuota) ---"
-  python ocr_worker.py
+# Esegue uno step: registra inizio/fine sul tracker separando gli errori
+# dello step da eventuali errori del tracker stesso.
+#   _run_step <step_name> <comando...>
+_run_step() {
+  local step="$1"; shift
+  _step="$step"
+  $PY start "$RUN_ID" "$step" 2>/dev/null || true
+  "$@"                          # propaga il codice di uscita del comando Python
+  local rc=$?
+  if [ $rc -eq 0 ]; then
+    $PY end "$RUN_ID" "$step" 2>/dev/null || true
+  fi
+  return $rc
+}
 
-  echo "--- Matcher ---"
-  python -m src.matcher
+echo "=== Pipeline avviata: $(date) ==="
 
-  echo "--- Reporter ---"
-  python -m src.reporter
+echo "--- Collector ---"
+_run_step collector python -m src.collector
 
-  echo "--- Notifier ---"
-  python -m src.notifier --days 30
+echo "--- Extractor ---"
+_run_step extractor python -m src.extractor
 
-  echo "=== Pipeline completata: $(date) ==="
-} 2>&1 | tee "$LOG"
+echo "--- OCR worker (se coda non vuota) ---"
+_run_step ocr_worker python ocr_worker.py
 
-# Mantieni solo gli ultimi 14 log
-ls -t data/pipeline_*.log | tail -n +15 | xargs -r rm
+echo "--- Matcher ---"
+_run_step matcher python -m src.matcher
+
+echo "--- Reporter ---"
+_run_step reporter python -m src.reporter
+
+echo "--- Notifier ---"
+_run_step notifier python -m src.notifier --days 30
+
+echo "=== Pipeline completata: $(date) ==="
+$PY done "$RUN_ID" completed
