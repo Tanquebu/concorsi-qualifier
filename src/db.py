@@ -54,10 +54,37 @@ CREATE TABLE IF NOT EXISTS match_results (
 
 CREATE INDEX IF NOT EXISTS idx_match_results_compatibilita ON match_results(compatibilita);
 CREATE INDEX IF NOT EXISTS idx_match_results_bando_id      ON match_results(bando_id);
+
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+    id           TEXT PRIMARY KEY,
+    started_at   TEXT NOT NULL,
+    completed_at TEXT,
+    current_step TEXT,
+    status       TEXT NOT NULL DEFAULT 'running',
+    steps_json   TEXT NOT NULL DEFAULT '[]',
+    error_step   TEXT,
+    error_msg    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at);
+
+CREATE TABLE IF NOT EXISTS user_actions (
+    id         TEXT PRIMARY KEY,
+    bando_id   TEXT NOT NULL REFERENCES bandi(id),
+    action     TEXT NOT NULL,
+    nota       TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_actions_bando_id ON user_actions(bando_id);
+CREATE INDEX IF NOT EXISTS idx_user_actions_action   ON user_actions(action);
 """
 
 
 def init_db(db_path: Path) -> None:
     """Crea tabelle e indici se non esistono. Idempotente."""
-    with sqlite3.connect(db_path) as conn:
+    conn = sqlite3.connect(db_path)
+    try:
         conn.executescript(_DDL)
+    finally:
+        conn.close()

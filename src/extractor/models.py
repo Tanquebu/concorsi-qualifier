@@ -24,7 +24,7 @@ class Bando(BaseModel):
     testo_raw: str = ""
     parse_method: Literal["pdf_text", "pdf_ocr", "html", "parse_failed"]
     extraction_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    status: Literal["ok", "parse_failed", "expired", "duplicate"] = "ok"
+    status: Literal["ok", "parse_failed", "expired", "duplicate", "scartato"] = "ok"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     @field_validator("scadenza", mode="before")

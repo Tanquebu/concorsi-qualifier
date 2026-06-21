@@ -15,14 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 _ESITO_ICON = {"alta": "✅", "media": "🟡", "bassa": "❌", "da_verificare": "❓"}
 
 
-def _load_pairs(db_path: Path) -> list[tuple[MatchResult, Bando]]:
-    if not db_path.exists():
-        return []
-    pairs = []
-    with sqlite3.connect(db_path) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            """SELECT mr.*, b.titolo as _titolo, b.ente as _ente, b.fonte as _fonte,
+_SELECT_COLS = """SELECT mr.*, b.titolo as _titolo, b.ente as _ente, b.fonte as _fonte,
                       b.url as _url, b.parse_method as _parse_method,
                       b.scadenza as _scadenza, b.area_geografica as _area_geografica,
                       b.posti as _posti, b.requisiti_formali as _req,
@@ -33,9 +26,23 @@ def _load_pairs(db_path: Path) -> list[tuple[MatchResult, Bando]]:
                       b.testo_raw as _testo_raw, b.status as _bstatus,
                       b.created_at as _bcreated_at
                FROM match_results mr
-               JOIN bandi b ON mr.bando_id = b.id
-               WHERE mr.compatibilita IN ('alta', 'media')"""
-        ).fetchall()
+               JOIN bandi b ON mr.bando_id = b.id"""
+
+
+def _load_pairs(db_path: Path, bando_id: str | None = None) -> list[tuple[MatchResult, Bando]]:
+    if not db_path.exists():
+        return []
+    pairs = []
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        if bando_id:
+            rows = conn.execute(
+                f"{_SELECT_COLS} WHERE mr.bando_id = ?", (bando_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f"{_SELECT_COLS} WHERE mr.compatibilita IN ('alta', 'media')"
+            ).fetchall()
     for row in rows:
         d = dict(row)
         mr = MatchResult(
@@ -77,11 +84,15 @@ def main() -> None:
     parser.add_argument("--db", default="concorsi.db", type=Path, metavar="PATH")
     parser.add_argument("--output", default="data/processed", type=Path, metavar="DIR")
     parser.add_argument("--force", action="store_true", help="Rigenera schede già esistenti")
+    parser.add_argument("--bando-id", metavar="ID", help="Riprocessa solo questo bando (qualsiasi compatibilità)")
     args = parser.parse_args()
 
-    pairs = _load_pairs(args.db)
+    pairs = _load_pairs(args.db, bando_id=args.bando_id)
     if not pairs:
-        print("Nessun match_result trovato. Esegui prima matcher.")
+        if args.bando_id:
+            print(f"Nessun match_result trovato per bando_id={args.bando_id}")
+        else:
+            print("Nessun match_result trovato. Esegui prima matcher.")
         return
 
     totale = len(pairs)

@@ -8,11 +8,15 @@ from src.matcher.models import MatchResult
 from src.reporter.prompt import REPORTER_PROMPT
 
 
+_OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "90"))
+
+
 def _get_llm() -> ChatOllama:
     return ChatOllama(
         model=os.environ.get("OLLAMA_MODEL", "llama3.1"),
         base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=0,
+        timeout=_OLLAMA_TIMEOUT,
     )
 
 
