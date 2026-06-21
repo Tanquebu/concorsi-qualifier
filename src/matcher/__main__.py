@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from src.db import init_db
 from src.extractor.models import Bando
 from src.matcher import match
 from src.matcher.models import CandidatoProfilo
@@ -43,6 +44,7 @@ def main() -> None:
     with open(args.profilo_config, encoding="utf-8") as f:
         profilo = CandidatoProfilo(**yaml.safe_load(f))
 
+    init_db(args.db)
     bandi = _load_bandi(args.db)
     if not bandi:
         print("Nessun bando trovato in SQLite. Esegui prima il collector + extractor.")
@@ -52,18 +54,19 @@ def main() -> None:
     print(f"Profilo: {profilo.nome} | Bandi da analizzare: {totale}\n")
     alta = media = bassa = da_ver = 0
 
-    for i, bando in enumerate(bandi, 1):
-        result = match(bando, profilo, db_path=args.db)
-        icon = _ESITO_ICON[result.compatibilita]
-        print(f"  [{i}/{totale}] {icon} [{result.compatibilita.upper():13}] {bando.titolo[:55]}")
-        if result.compatibilita == "alta":
-            alta += 1
-        elif result.compatibilita == "media":
-            media += 1
-        elif result.compatibilita == "bassa":
-            bassa += 1
-        else:
-            da_ver += 1
+    with sqlite3.connect(args.db) as conn:
+        for i, bando in enumerate(bandi, 1):
+            result = match(bando, profilo, db_path=args.db, conn=conn)
+            icon = _ESITO_ICON[result.compatibilita]
+            print(f"  [{i}/{totale}] {icon} [{result.compatibilita.upper():13}] {bando.titolo[:55]}")
+            if result.compatibilita == "alta":
+                alta += 1
+            elif result.compatibilita == "media":
+                media += 1
+            elif result.compatibilita == "bassa":
+                bassa += 1
+            else:
+                da_ver += 1
 
     print(f"\nRiepilogo: ✅ {alta} alta  🟡 {media} media  ❌ {bassa} bassa  ❓ {da_ver} da_ver")
 
