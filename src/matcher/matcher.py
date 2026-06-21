@@ -7,6 +7,7 @@ from src.matcher.checks import (
     check_esclusioni,
     check_esperienza_dominio,
     check_scadenza,
+    check_tipo_atto,
     check_titolo_studio,
 )
 from src.matcher.models import DISCLAIMER, CandidatoProfilo, CheckItem, MatchResult
@@ -33,6 +34,7 @@ def aggregate_checks(
 
 def match(bando: Bando, profilo: CandidatoProfilo) -> MatchResult:
     checks = [
+        check_tipo_atto(bando.titolo, bando.testo_raw),
         check_titolo_studio(bando.titolo_studio_richiesto, profilo.titolo_studio),
         check_area_geografica(bando.area_geografica, profilo.aree_preferite),
         check_scadenza(bando.scadenza),

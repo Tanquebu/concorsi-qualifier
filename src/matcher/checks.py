@@ -3,6 +3,26 @@ from datetime import date
 
 from src.matcher.models import CheckItem
 
+# Rileva atti che non sono concorsi pubblici per assunzione: nomine a organismi, incarichi monocratici
+_TIPO_NON_CONCORSO_RE = re.compile(
+    r"nomina\s+organismo"
+    r"|nomina\s+oiv\b"
+    r"|\borganismo\s+indipendente\s+(?:di\s+)?valutazione"
+    r"|nomina\s+commissari[oa]\b"
+    r"|nomina\s+(?:dei?\s+)?componenti"
+    r"|procedura\s+selettiva\s+(?:pubblica\s+)?per\s+(?:la\s+)?nomina"
+    # Graduatorie già formate: titolo che inizia con "Graduatoria" = scorrimento lista
+    r"|^graduatoria\s+"
+    # "Graduatoria di merito" menzionata nel corpo del testo
+    r"|\bgraduatoria\s+di\s+merito\b",
+    re.IGNORECASE,
+)
+
+# Rileva avvisi di mobilità (art. 30 D.Lgs. 165/2001): trasferimento tra PA, richiede già di essere
+# dipendente pubblico. Cercata solo nel titolo per evitare falsi positivi su concorsi che menzionano
+# "mobilità" nel testo (es. concorso per responsabile ufficio mobilità urbana).
+_MOBILITA_RE = re.compile(r"\bmobilit[àa]\b", re.IGNORECASE)
+
 # Rileva contratti a durata fissa: "durata di 24 mesi", "durata biennale", "12 mesi prorogabili"
 _DURATA_FISSA_RE = re.compile(
     r"durat\w{0,1}\s+(?:di\s+)?\d+\s*mesi"   # "durata di 24 mesi" + typo "durat di"
@@ -206,3 +226,14 @@ def check_categoria(categoria: str | None, settori: list[str]) -> CheckItem:
         esito="warning",
         nota=f"Categoria '{categoria}' non corrisponde ai settori preferiti",
     )
+
+
+def check_tipo_atto(titolo: str, testo_raw: str = "") -> CheckItem:
+    testo = titolo + " " + testo_raw[:1000]
+    if _TIPO_NON_CONCORSO_RE.search(testo) or _MOBILITA_RE.search(titolo):
+        return CheckItem(
+            requisito="Tipo atto",
+            esito="fail",
+            nota="Non è un concorso pubblico per assunzione: mobilità, graduatoria già formata o nomina a organismo/incarico",
+        )
+    return CheckItem(requisito="Tipo atto", esito="ok")

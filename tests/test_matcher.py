@@ -9,6 +9,7 @@ from src.matcher.checks import (
     check_categoria,
     check_esclusioni,
     check_scadenza,
+    check_tipo_atto,
     check_titolo_studio,
 )
 from src.matcher.matcher import aggregate_checks
@@ -114,6 +115,96 @@ def test_check_esclusioni_triggered() -> None:
     )
     assert item.esito == "fail"
     assert item.nota is not None
+
+
+# --- check_tipo_atto ---
+
+def test_check_tipo_atto_concorso_ok() -> None:
+    item = check_tipo_atto("Concorso pubblico per n. 3 posti di Informatico cat. D")
+    assert item.esito == "ok"
+
+
+def test_check_tipo_atto_nomina_organismo_fail() -> None:
+    titolo = (
+        "Avviso Procedura Selettiva Pubblica Nomina Organismo Indipendente Valutazione "
+        "della Performance in Forma Monocratica Triennio 2026-2028"
+    )
+    item = check_tipo_atto(titolo)
+    assert item.esito == "fail"
+    assert item.nota is not None
+
+
+def test_check_tipo_atto_nomina_oiv_fail() -> None:
+    item = check_tipo_atto("Avviso selezione pubblica nomina OIV")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_procedura_selettiva_nomina_fail() -> None:
+    item = check_tipo_atto("Procedura selettiva pubblica per la nomina di componente")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_graduatoria_di_merito_fail() -> None:
+    item = check_tipo_atto(
+        "Graduatoria di merito per la classe di concorso AM2B per posti Friuli Venezia Giulia"
+    )
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_graduatoria_codice_fail() -> None:
+    item = check_tipo_atto("Graduatoria A041 – Regioni Lazio, Sardegna, Toscana")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_graduatoria_del_concorso_fail() -> None:
+    item = check_tipo_atto("Graduatoria del concorso personale docente scuola secondaria")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_formazione_graduatoria_ok() -> None:
+    # "formazione di una graduatoria" è una selezione attiva, non uno scorrimento lista
+    item = check_tipo_atto("Selezione pubblica per esami per la formazione di una graduatoria")
+    assert item.esito == "ok"
+
+
+def test_check_tipo_atto_mobilita_volontaria_fail() -> None:
+    item = check_tipo_atto("AVVISO DI MOBILITA' VOLONTARIA PER LA COPERTURA DI N.1 POSTO DI FUNZIONARIO")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_mobilita_esterna_fail() -> None:
+    item = check_tipo_atto("AVVISO DI MOBILITA' ESTERNA PER LA COPERTURA DI UN POSTO DI FUNZIONARIO")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_mobilita_accento_fail() -> None:
+    item = check_tipo_atto("Mobilità volontaria per passaggio diretto da altre amministrazioni")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_mobilita_solo_testo_raw_ok() -> None:
+    # "mobilità" solo nel testo_raw (non nel titolo) non deve escludere un vero concorso
+    item = check_tipo_atto(
+        "Concorso pubblico per n. 1 Istruttore Tecnico settore trasporti",
+        testo_raw="Il candidato gestirà la mobilità urbana e i trasporti pubblici locali.",
+    )
+    assert item.esito == "ok"
+
+
+def test_match_nomina_organismo_bassa() -> None:
+    bando = _bando(
+        titolo=(
+            "Avviso Procedura Selettiva Pubblica Nomina Organismo Indipendente "
+            "Valutazione della Performance Triennio 2026-2028"
+        ),
+        scadenza=date.today() + timedelta(days=10),
+        area_geografica="Sicilia, Catania",
+        posti=1,
+    )
+    result = internal_match(bando, _profilo())
+    assert result.compatibilita == "bassa", (
+        f"atteso 'bassa', ottenuto '{result.compatibilita}'"
+    )
 
 
 # --- check_categoria ---
