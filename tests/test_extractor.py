@@ -176,6 +176,25 @@ def test_extract_persists_to_db(tmp_path: Path) -> None:
     assert row[1] == "test"
 
 
+def test_extract_posti_override(tmp_path: Path) -> None:
+    """Per i concorsi InPA raggruppati, il numero di posti noto dal collector
+    (per il singolo profilo) prevale su quello estratto dall'LLM (spesso il totale
+    del decreto condiviso tra più profili)."""
+    from src.extractor import extract
+
+    with patch("src.extractor.run_extraction", return_value=(json.loads(_VALID_JSON), 0.8)):
+        bando = extract(
+            "Testo del bando",
+            "pdf_text",
+            url="https://example.com/bando/1",
+            fonte="inpa",
+            bando_id="hash001",
+            db_path=tmp_path / "test.db",
+            posti_override=60,
+        )
+    assert bando.posti == 60
+
+
 # --- fixture reale bando_01 ---
 
 _FIXTURE_DIR = Path(__file__).parent / "fixtures" / "extractor"

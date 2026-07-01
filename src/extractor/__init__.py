@@ -20,6 +20,7 @@ def extract(
     data_pubblicazione: str = "",
     db_path: Path = _DEFAULT_DB,
     conn: sqlite3.Connection | None = None,
+    posti_override: int | None = None,
 ) -> Bando:
     """Estrae un Bando dal testo e lo persiste in SQLite."""
     data, confidence = run_extraction(testo, data_pubblicazione=data_pubblicazione)
@@ -29,6 +30,13 @@ def extract(
     data["requisiti_formali"] = data.get("requisiti_formali") or []
     data["materie_esame"] = data.get("materie_esame") or []
     data["documenti_richiesti"] = data.get("documenti_richiesti") or []
+
+    if posti_override is not None:
+        # Per i concorsi InPA raggruppati in più famiglie professionali (stesso decreto,
+        # stesso PDF), il testo riporta sia il totale del decreto sia i posti per singola
+        # famiglia: l'LLM tende a estrarre il totale. Il collector conosce già il numero
+        # corretto per questo specifico profilo (da numPosti o dal titolo del sotto-gruppo).
+        data["posti"] = posti_override
 
     data["id"] = bando_id or hashlib.sha256(url.encode()).hexdigest()
     data["fonte"] = fonte

@@ -69,6 +69,7 @@ def main() -> None:
                     url=meta["url"],
                     fonte=meta["fonte"],
                     bando_id=file_hash,
+                    posti_override=meta.get("posti"),
                     data_pubblicazione=meta.get("published", ""),
                     db_path=args.db,
                     conn=conn,
