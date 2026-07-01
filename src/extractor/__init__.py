@@ -19,6 +19,7 @@ def extract(
     bando_id: str = "",
     data_pubblicazione: str = "",
     db_path: Path = _DEFAULT_DB,
+    conn: sqlite3.Connection | None = None,
 ) -> Bando:
     """Estrae un Bando dal testo e lo persiste in SQLite."""
     data, confidence = run_extraction(testo, data_pubblicazione=data_pubblicazione)
@@ -37,13 +38,20 @@ def extract(
     data["extraction_confidence"] = confidence
 
     bando = Bando(**data)
-    _persist_bando(bando, db_path)
+    _persist_bando(bando, db_path, conn=conn)
     return bando
 
 
-def _persist_bando(bando: Bando, db_path: Path) -> None:
-    init_db(db_path)
-    with sqlite3.connect(db_path) as conn:
+def _persist_bando(
+    bando: Bando,
+    db_path: Path,
+    conn: sqlite3.Connection | None = None,
+) -> None:
+    _own_conn = conn is None
+    if _own_conn:
+        init_db(db_path)
+        conn = sqlite3.connect(db_path)
+    try:
         conn.execute(
             """INSERT OR REPLACE INTO bandi
                (id, fonte, url, titolo, ente, categoria, area_geografica, posti, scadenza,
@@ -74,6 +82,10 @@ def _persist_bando(bando: Bando, db_path: Path) -> None:
                 bando.created_at.isoformat(),
             ),
         )
+        conn.commit()
+    finally:
+        if _own_conn:
+            conn.close()
 
 
 __all__ = ["extract", "run_extraction", "Bando"]
