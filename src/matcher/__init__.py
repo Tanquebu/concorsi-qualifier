@@ -2,6 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from src.db import init_db
 from src.extractor.models import Bando
 from src.matcher.matcher import match as _match
 from src.matcher.models import CandidatoProfilo, MatchResult
@@ -28,6 +29,7 @@ def _persist_match_result(
 ) -> None:
     _own_conn = conn is None
     if _own_conn:
+        init_db(db_path)
         conn = sqlite3.connect(db_path)
     try:
         conn.execute("DELETE FROM match_results WHERE bando_id = ?", (mr.bando_id,))

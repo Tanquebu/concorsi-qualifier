@@ -72,10 +72,12 @@ def test_filter_empty_list() -> None:
     assert filter_bandi([]) == []
 
 
-def test_filter_excludes_none_scadenza() -> None:
+def test_filter_accepts_none_scadenza() -> None:
+    # Scadenza non specificata (es. bandi a sportello): non escludere per prudenza,
+    # la verifica finale resta comunque al candidato.
     bando = _bando(scadenza=None)
     results = [(bando, _match())]
-    assert filter_bandi(results) == []
+    assert filter_bandi(results) == results
 
 
 # --- build_digest_payload ---
