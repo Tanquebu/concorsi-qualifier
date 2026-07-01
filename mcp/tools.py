@@ -172,6 +172,68 @@ def get_collector_runs(limit: int = 10) -> dict:
     return {"collector_runs": result, "count": len(result), "_nota": nota}
 
 
+def search_bando(query: str, limit: int = 10) -> dict:
+    """Cerca bandi per titolo o ente (LIKE), restituisce id, titolo, ente, status, user_status e scheda candidatura se presente."""
+    db = _ensure_db()
+    pattern = f"%{query}%"
+    sql = """
+        SELECT b.id, b.titolo, b.ente, b.area_geografica, b.scadenza,
+               b.status, b.user_status,
+               mr.compatibilita,
+               c.exam_date, c.exam_time, c.exam_location, c.codice_candidatura
+        FROM bandi b
+        LEFT JOIN match_results mr ON b.id = mr.bando_id
+        LEFT JOIN candidature c ON b.id = c.bando_id
+        WHERE (b.titolo LIKE ? OR b.ente LIKE ?)
+        ORDER BY b.created_at DESC
+        LIMIT ?
+    """
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(sql, (pattern, pattern, limit)).fetchall()
+
+    result = [dict(r) for r in rows]
+    return {"bandi": result, "count": len(result)}
+
+
+def get_bando(id: str) -> dict:
+    """Dettaglio completo di un singolo bando per hash/id, incluso user_status, scheda candidatura e match result."""
+    db = _ensure_db()
+    sql = """
+        SELECT b.id, b.fonte, b.url, b.titolo, b.ente, b.categoria,
+               b.area_geografica, b.posti, b.scadenza, b.titolo_studio_richiesto,
+               b.requisiti_formali, b.materie_esame, b.tassa_concorso,
+               b.link_candidatura, b.documenti_richiesti,
+               b.parse_method, b.extraction_confidence, b.status, b.user_status,
+               b.created_at,
+               mr.id AS mr_id, mr.compatibilita, mr.checklist,
+               mr.da_verificare, mr.spiegazione, mr.disclaimer,
+               mr.created_at AS mr_created_at,
+               c.exam_date, c.exam_time, c.exam_location,
+               c.codice_candidatura, c.note AS candidatura_note,
+               c.updated_at AS candidatura_updated_at
+        FROM bandi b
+        LEFT JOIN match_results mr ON b.id = mr.bando_id
+        LEFT JOIN candidature c ON b.id = c.bando_id
+        WHERE b.id = ?
+    """
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(sql, (id,)).fetchone()
+
+    if not row:
+        return {"error": f"Bando non trovato: {id!r}"}
+
+    d = dict(row)
+    for field in ("requisiti_formali", "materie_esame", "documenti_richiesti", "checklist", "da_verificare"):
+        if d.get(field):
+            try:
+                d[field] = json.loads(d[field])
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return {"bando": d}
+
+
 async def trigger_pipeline(
     module: str,
     extra_args: list[str] | None = None,

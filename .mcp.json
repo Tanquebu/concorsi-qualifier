@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "concorsi": {
+      "command": "/home/max/projects/concorsi-qualifier/mcp/.venv/bin/python3",
+      "args": ["/home/max/projects/concorsi-qualifier/mcp/server.py"],
+      "env": {
+        "PIPELINE_PYTHON": "/home/max/projects/concorsi-qualifier/.venv/bin/python3"
+      }
+    }
+  }
+}

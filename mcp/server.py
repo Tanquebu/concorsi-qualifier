@@ -95,6 +95,48 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="search_bando",
+            description=(
+                "Cerca bandi per titolo o ente (LIKE case-insensitive). "
+                "Restituisce id, titolo, ente, area, scadenza, status di sistema, "
+                "user_status (applicato/da_valutare/null) e compatibilità. "
+                "Utile per trovare un bando specifico di cui si conosce solo parte del nome."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Testo da cercare in titolo o ente",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Numero massimo di risultati (default 10)",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="get_bando",
+            description=(
+                "Dettaglio completo di un singolo bando dato il suo ID (hash SHA256). "
+                "Include tutti i campi estratti, user_status, e il match result completo "
+                "con checklist, da_verificare e spiegazione AI."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "ID del bando (hash SHA256, 64 caratteri hex)",
+                    },
+                },
+                "required": ["id"],
+            },
+        ),
+        types.Tool(
             name="trigger_pipeline",
             description=(
                 "Lancia un modulo della pipeline come subprocess. "
@@ -124,7 +166,14 @@ async def list_tools() -> list[types.Tool]:
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    if name == "get_bandi":
+    if name == "search_bando":
+        result = tools.search_bando(
+            query=arguments["query"],
+            limit=arguments.get("limit", 10),
+        )
+    elif name == "get_bando":
+        result = tools.get_bando(id=arguments["id"])
+    elif name == "get_bandi":
         result = tools.get_bandi(
             compatibilita=arguments.get("compatibilita"),
             scadenza_entro_giorni=arguments.get("scadenza_entro_giorni"),
