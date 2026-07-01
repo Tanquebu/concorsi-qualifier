@@ -29,7 +29,9 @@ def _load_pairs(db_path: Path) -> list[tuple[Bando, MatchResult]]:
                       b.testo_raw as _testo, b.status as _bstatus,
                       b.created_at as _bca, b.categoria as _cat,
                       b.titolo_studio_richiesto as _ts
-               FROM match_results mr JOIN bandi b ON mr.bando_id = b.id"""
+               FROM match_results mr JOIN bandi b ON mr.bando_id = b.id
+               WHERE b.status = 'ok'
+                 AND (b.user_status IS NULL OR b.user_status NOT IN ('applicato', 'ignorato'))"""
         ).fetchall()
     for row in rows:
         d = dict(row)

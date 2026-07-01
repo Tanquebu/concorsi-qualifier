@@ -7,14 +7,20 @@ from src.matcher.models import CheckItem
 _TIPO_NON_CONCORSO_RE = re.compile(
     r"nomina\s+organismo"
     r"|nomina\s+oiv\b"
+    r"|\bo\.i\.v\."  # abbreviazione puntata usata in luogo di "OIV"
     r"|\borganismo\s+indipendente\s+(?:di\s+)?valutazione"
     r"|nomina\s+commissari[oa]\b"
-    r"|nomina\s+(?:dei?\s+)?componenti"
+    r"|nomina\s+(?:dei?|del)\s+componenti?"  # singolare + del
+    r"|sostituzione\s+del\s+componente"  # sostituzione membro OIV/commissione
     r"|procedura\s+selettiva\s+(?:pubblica\s+)?per\s+(?:la\s+)?nomina"
     # Graduatorie già formate: titolo che inizia con "Graduatoria" = scorrimento lista
     r"|^graduatoria\s+"
     # "Graduatoria di merito" menzionata nel corpo del testo
-    r"|\bgraduatoria\s+di\s+merito\b",
+    r"|\bgraduatoria\s+di\s+merito\b"
+    # Contratti di collaborazione: co.co.co, prestazione occasionale, non assunzione
+    r"|\bcontratto\s+di\s+collaborazione\b"
+    r"|\bcollaborazione\s+coordinata\s+e\s+continuativa\b"
+    r"|\bco\.?\s*co\.?\s*co\b",
     re.IGNORECASE,
 )
 
@@ -22,6 +28,15 @@ _TIPO_NON_CONCORSO_RE = re.compile(
 # dipendente pubblico. Cercata solo nel titolo per evitare falsi positivi su concorsi che menzionano
 # "mobilità" nel testo (es. concorso per responsabile ufficio mobilità urbana).
 _MOBILITA_RE = re.compile(r"\bmobilit[àa]\b", re.IGNORECASE)
+
+# Rileva bandi riservati esclusivamente alle categorie protette (art. 8 L.68/1999): il candidato
+# non può partecipare per legge. Cercata solo nel titolo per evitare falsi positivi su bandi che
+# citano "categorie protette" solo per quote parziali o nel corpo del testo.
+_CATEGORIE_PROTETTE_RE = re.compile(
+    r"\briservat[oa]\b.{0,80}categorie\s+protette"
+    r"|categorie\s+protette.{0,80}\briservat[oa]\b",
+    re.IGNORECASE,
+)
 
 # Rileva contratti a durata fissa: "durata di 24 mesi", "durata biennale", "12 mesi prorogabili"
 _DURATA_FISSA_RE = re.compile(
@@ -79,12 +94,26 @@ def check_titolo_studio(richiesto: str | None, posseduto: str) -> CheckItem:
     )
 
 
+_AREA_NAZIONALE_RE = re.compile(
+    r"\bnazionale\b"
+    r"|\btutto\s+il\s+territorio\s+nazionale\b"
+    r"|\btutta\s+italia\b",
+    re.IGNORECASE,
+)
+
+
 def check_area_geografica(area_bando: str | None, aree_preferite: list[str]) -> CheckItem:
     if area_bando is None:
         return CheckItem(
             requisito="Area geografica",
             esito="unknown",
             nota="Sede non specificata nel bando",
+        )
+    if _AREA_NAZIONALE_RE.search(area_bando):
+        return CheckItem(
+            requisito="Area geografica",
+            esito="ok",
+            nota="Sede nazionale — aperto a tutto il territorio",
         )
     a_low = area_bando.lower()
     for area in aree_preferite:
@@ -234,6 +263,12 @@ def check_tipo_atto(titolo: str, testo_raw: str = "") -> CheckItem:
         return CheckItem(
             requisito="Tipo atto",
             esito="fail",
-            nota="Non è un concorso pubblico per assunzione: mobilità, graduatoria già formata o nomina a organismo/incarico",
+            nota="Non è un concorso pubblico per assunzione: mobilità, graduatoria già formata, nomina a organismo/incarico o contratto di collaborazione",
+        )
+    if _CATEGORIE_PROTETTE_RE.search(titolo):
+        return CheckItem(
+            requisito="Tipo atto",
+            esito="fail",
+            nota="Bando riservato esclusivamente alle categorie protette (art. 8 L. 68/1999)",
         )
     return CheckItem(requisito="Tipo atto", esito="ok")

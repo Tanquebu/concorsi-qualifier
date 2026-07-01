@@ -17,18 +17,34 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 _ESITO_ICON = {"alta": "✅", "media": "🟡", "bassa": "❌", "da_verificare": "❓"}
 
 
-def _load_bandi(db_path: Path) -> list[Bando]:
+def _load_bandi(
+    db_path: Path,
+    incremental: bool = False,
+    bando_id: str | None = None,
+) -> list[Bando]:
     if not db_path.exists():
         return []
     bandi = []
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute("SELECT * FROM bandi WHERE status = 'ok'").fetchall()
+        if bando_id:
+            sql = "SELECT * FROM bandi WHERE id = ?"
+            params: tuple = (bando_id,)
+        elif incremental:
+            sql = """
+                SELECT b.* FROM bandi b
+                LEFT JOIN match_results mr ON b.id = mr.bando_id
+                WHERE b.status = 'ok' AND mr.bando_id IS NULL
+            """
+            params = ()
+        else:
+            sql = "SELECT * FROM bandi WHERE status = 'ok'"
+            params = ()
+        rows = conn.execute(sql, params).fetchall()
     for row in rows:
         data = dict(row)
         for field in ("requisiti_formali", "materie_esame", "documenti_richiesti"):
-            if data.get(field):
-                data[field] = json.loads(data[field])
+            data[field] = json.loads(data[field]) if data.get(field) else []
         bandi.append(Bando(**data))
     return bandi
 
@@ -39,19 +55,38 @@ def main() -> None:
         "profilo_config", nargs="?", default="config/profilo_candidato.yaml", type=Path
     )
     parser.add_argument("--db", default="concorsi.db", type=Path, metavar="PATH")
+    parser.add_argument(
+        "--incremental", action="store_true",
+        help="Salta i bandi già matchati (più veloce nelle run quotidiane)",
+    )
+    parser.add_argument(
+        "--bando-id", metavar="ID",
+        help="Forza il (ri)match di un singolo bando per ID (ignora --incremental)",
+    )
     args = parser.parse_args()
 
     with open(args.profilo_config, encoding="utf-8") as f:
         profilo = CandidatoProfilo(**yaml.safe_load(f))
 
     init_db(args.db)
-    bandi = _load_bandi(args.db)
+    bandi = _load_bandi(args.db, incremental=args.incremental, bando_id=args.bando_id)
     if not bandi:
-        print("Nessun bando trovato in SQLite. Esegui prima il collector + extractor.")
+        if args.bando_id:
+            print(f"Bando non trovato: {args.bando_id}")
+        elif args.incremental:
+            print("Nessun bando nuovo da matchare.")
+        else:
+            print("Nessun bando trovato in SQLite. Esegui prima il collector + extractor.")
         return
 
     totale = len(bandi)
-    print(f"Profilo: {profilo.nome} | Bandi da analizzare: {totale}\n")
+    if args.bando_id:
+        mode = f"singolo ({args.bando_id[:12]}…)"
+    elif args.incremental:
+        mode = "incrementale"
+    else:
+        mode = "completo"
+    print(f"Profilo: {profilo.nome} | Bandi da analizzare: {totale} (modo {mode})\n")
     alta = media = bassa = da_ver = 0
 
     with sqlite3.connect(args.db) as conn:

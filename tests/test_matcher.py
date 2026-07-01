@@ -83,6 +83,16 @@ def test_check_area_geografica_unknown() -> None:
     assert item.esito == "unknown"
 
 
+def test_check_area_geografica_nazionale() -> None:
+    item = check_area_geografica("Nazionale", ["Milano"])
+    assert item.esito == "ok"
+
+
+def test_check_area_geografica_tutto_territorio() -> None:
+    item = check_area_geografica("tutto il territorio nazionale", ["Roma"])
+    assert item.esito == "ok"
+
+
 # --- check_scadenza ---
 
 def test_check_scadenza_ok() -> None:
@@ -182,11 +192,57 @@ def test_check_tipo_atto_mobilita_accento_fail() -> None:
     assert item.esito == "fail"
 
 
+def test_check_tipo_atto_contratto_collaborazione_fail() -> None:
+    item = check_tipo_atto("Avviso selezione per contratto di collaborazione coordinata e continuativa")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_cococo_fail() -> None:
+    item = check_tipo_atto("Selezione pubblica per collaborazione coordinata e continuativa (co.co.co)")
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_sostituzione_componente_oiv_fail() -> None:
+    # Bando reale: sostituzione membro dimissionario OIV — non è un concorso pubblico
+    titolo = (
+        "AVVISO DI PROCEDURA SELETTIVA PUBBLICA FINALIZZATA ALLA SOSTITUZIONE DEL COMPONENTE "
+        "DIMISSIONARIO DELL'O.I.V. IN FORMA COLLEGIALE DELL'ISTITUTO ZOOPROFILATTICO "
+        "SPERIMENTALE DELLA SICILIA"
+    )
+    item = check_tipo_atto(titolo)
+    assert item.esito == "fail"
+
+
+def test_check_tipo_atto_oiv_abbreviazione_fail() -> None:
+    item = check_tipo_atto("Selezione pubblica O.I.V. Comune di Roma")
+    assert item.esito == "fail"
+
+
 def test_check_tipo_atto_mobilita_solo_testo_raw_ok() -> None:
     # "mobilità" solo nel testo_raw (non nel titolo) non deve escludere un vero concorso
     item = check_tipo_atto(
         "Concorso pubblico per n. 1 Istruttore Tecnico settore trasporti",
         testo_raw="Il candidato gestirà la mobilità urbana e i trasporti pubblici locali.",
+    )
+    assert item.esito == "ok"
+
+
+def test_check_tipo_atto_categorie_protette_riservato_fail() -> None:
+    titolo = (
+        "Bando di Concorso Pubblico per Titoli ed Esami, interamente riservato agli "
+        "appartenenti alle Categorie Protette di cui all'art. 8 Comma 2 della Legge "
+        "12 Marzo 1999 n. 68, per n. 1 Istruttore Amministrativo"
+    )
+    item = check_tipo_atto(titolo)
+    assert item.esito == "fail"
+    assert "categorie protette" in item.nota.lower()
+
+
+def test_check_tipo_atto_categorie_protette_solo_testo_raw_ok() -> None:
+    # "categorie protette" menzionato solo nel corpo (quota parziale) non esclude il bando
+    item = check_tipo_atto(
+        "Concorso pubblico per n. 3 posti di Funzionario Informatico cat. D",
+        testo_raw="2 posti riservati alle categorie protette ai sensi dell'art. 1 L. 68/1999.",
     )
     assert item.esito == "ok"
 

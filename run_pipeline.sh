@@ -50,7 +50,7 @@ echo "--- OCR worker (se coda non vuota) ---"
 _run_step ocr_worker python ocr_worker.py
 
 echo "--- Matcher ---"
-_run_step matcher python -m src.matcher
+_run_step matcher python -m src.matcher --incremental
 
 echo "--- Reporter ---"
 _run_step reporter python -m src.reporter

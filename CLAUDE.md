@@ -149,6 +149,35 @@ Pipeline: `new` → `in_progress` → `completed` | `rejected` | `error` (entro 
 
 ---
 
+## Note operative
+
+### Matcher — modalità incrementale
+
+Il matcher supporta tre modalità:
+
+| Comando | Comportamento | Quando usarlo |
+|---|---|---|
+| `python -m src.matcher` | ri-matcha tutti i bandi | dopo cambio profilo o checklist |
+| `python -m src.matcher --incremental` | solo bandi senza match result | **default pipeline quotidiana** |
+| `python -m src.matcher --bando-id <ID>` | forza (ri)match di un singolo bando | debug, inserimento manuale |
+
+`--bando-id` ignora `--incremental` e sovrascrive sempre il risultato esistente.
+
+La pipeline (`run_pipeline.sh`) usa `--incremental` di default.
+
+### Inserimento manuale di bandi (già candidato)
+
+Per aggiungere bandi scaduti a cui si è già candidati (non presenti in DB perché il collector era offline):
+
+1. Recuperare l'ID dal link InPA (`/ui/public-area/concoursedetail/<ID>`)
+2. Inserire via API InPA con `parse_method='html'`, campi lista a `'[]'`, `user_status='applicato'`
+3. Impostare `ente` manualmente (l'API InPA restituisce `entiRiferimento: null` per bandi chiusi)
+4. Dopo il matcher, portare `match_results.compatibilita` a `'alta'` per i bandi applicato
+
+Il matcher `--incremental` non riprocessa questi bandi una volta inseriti. Per ricalcolarli usare `--force` (senza `--incremental`).
+
+---
+
 ## Flusso dati (pipeline sequenziale MVP)
 
 ```
