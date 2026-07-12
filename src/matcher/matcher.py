@@ -6,6 +6,7 @@ from src.matcher.checks import (
     check_categoria,
     check_esclusioni,
     check_esperienza_dominio,
+    check_limite_eta,
     check_scadenza,
     check_tipo_atto,
     check_titolo_studio,
@@ -43,6 +44,7 @@ def match(bando: Bando, profilo: CandidatoProfilo) -> MatchResult:
         ),
         check_categoria(bando.categoria, profilo.settori),
         check_esperienza_dominio(bando.requisiti_formali, profilo.settori, profilo.parole_chiave),
+        check_limite_eta(bando.requisiti_formali, profilo.data_nascita, bando.scadenza),
     ]
     compatibilita = aggregate_checks(checks)
     da_verificare = [c.nota for c in checks if c.esito == "unknown" and c.nota]

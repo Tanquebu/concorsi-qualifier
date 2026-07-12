@@ -239,6 +239,78 @@ def check_esperienza_dominio(
     return CheckItem(requisito="Esperienza di dominio", esito="ok")
 
 
+# Estrae limiti minimi/massimi di età dai requisiti formali, es.:
+# "avere compiuto il 17° anno di età e non superato il giorno di compimento del 38° anno di età"
+_ETA_MIN_RE = re.compile(
+    r"compiut[oa]\s+(?:i\s+)?(?:il\s+)?(\d{1,2})\s*°?\s*anno\s+di\s+et[àa]",
+    re.IGNORECASE,
+)
+_ETA_MAX_RE = re.compile(
+    r"non\s+(?:aver[e]?\s+)?superat[oa]\s+(?:il\s+giorno\s+di\s+compimento\s+del\s+)?(\d{1,2})\s*°?\s*anno\s+di\s+et[àa]"
+    r"|et[àa]\s+non\s+superiore\s+a\s+(\d{1,2})\s+anni"
+    r"|non\s+oltre\s+(?:il\s+)?(\d{1,2})\s*°?\s*anno\s+di\s+et[àa]",
+    re.IGNORECASE,
+)
+
+
+def _calcola_eta(data_nascita: date, riferimento: date) -> int:
+    eta = riferimento.year - data_nascita.year
+    if (riferimento.month, riferimento.day) < (data_nascita.month, data_nascita.day):
+        eta -= 1
+    return eta
+
+
+def check_limite_eta(
+    requisiti: list[str],
+    data_nascita: date | None,
+    scadenza: date | None,
+) -> CheckItem:
+    """Controlla i limiti di età (minimi/massimi) richiesti dal bando.
+
+    Un bando può elencare più fasce alternative (es. corsi diversi con limiti diversi):
+    basta rientrare in una delle fasce trovate per considerare il requisito soddisfatto.
+    """
+    fasce: list[tuple[int, int | None]] = []
+    for req in requisiti:
+        min_match = _ETA_MIN_RE.search(req)
+        max_match = _ETA_MAX_RE.search(req)
+        if min_match is None and max_match is None:
+            continue
+        eta_min = int(min_match.group(1)) if min_match else 0
+        eta_max = None
+        if max_match:
+            eta_max = int(next(g for g in max_match.groups() if g is not None))
+        fasce.append((eta_min, eta_max))
+
+    if not fasce:
+        return CheckItem(requisito="Limite di età", esito="ok")
+
+    if data_nascita is None:
+        return CheckItem(
+            requisito="Limite di età",
+            esito="unknown",
+            nota="Il bando specifica limiti di età ma la data di nascita non è impostata nel profilo",
+        )
+
+    riferimento = scadenza or date.today()
+    eta = _calcola_eta(data_nascita, riferimento)
+
+    if any(
+        eta_min <= eta and (eta_max is None or eta <= eta_max) for eta_min, eta_max in fasce
+    ):
+        return CheckItem(requisito="Limite di età", esito="ok")
+
+    range_str = "; ".join(
+        f"{eta_min}-{eta_max} anni" if eta_max is not None else f">= {eta_min} anni"
+        for eta_min, eta_max in fasce
+    )
+    return CheckItem(
+        requisito="Limite di età",
+        esito="fail",
+        nota=f"Età alla scadenza ({riferimento}): {eta} anni. Limiti richiesti: {range_str}",
+    )
+
+
 def check_categoria(categoria: str | None, settori: list[str]) -> CheckItem:
     if categoria is None:
         return CheckItem(

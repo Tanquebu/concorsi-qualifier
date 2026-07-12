@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -12,6 +12,7 @@ DISCLAIMER = (
 
 class CandidatoProfilo(BaseModel):
     nome: str
+    data_nascita: date | None = None
     titolo_studio: str
     aree_preferite: list[str] = Field(default_factory=list)
     settori: list[str] = Field(default_factory=list)
