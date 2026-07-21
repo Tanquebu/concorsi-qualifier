@@ -90,7 +90,9 @@ def get_match_results(
     """Risultati di matching con checklist e da_verificare già parsati da JSON."""
     db = _ensure_db()
 
-    conditions: list[str] = []
+    # Solo bandi validi: esclude gli 'scartato', che possono conservare match_result
+    # stale da run precedenti (il re-match completo processa solo status='ok').
+    conditions: list[str] = ["b.status = 'ok'"]
     params: list = []
 
     if compatibilita_minima and compatibilita_minima in _COMPAT_ORDER:

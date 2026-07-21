@@ -41,7 +41,8 @@ def _load_pairs(db_path: Path, bando_id: str | None = None) -> list[tuple[MatchR
             ).fetchall()
         else:
             rows = conn.execute(
-                f"{_SELECT_COLS} WHERE mr.compatibilita IN ('alta', 'media')"
+                f"{_SELECT_COLS} WHERE b.status = 'ok' "
+                "AND mr.compatibilita IN ('alta', 'media')"
             ).fetchall()
     for row in rows:
         d = dict(row)
