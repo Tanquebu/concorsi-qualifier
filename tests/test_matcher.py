@@ -51,8 +51,36 @@ def test_check_titolo_studio_ok_substring() -> None:
 
 
 def test_check_titolo_studio_ok_livello() -> None:
+    # Requisito di livello diploma: una laurea lo copre sempre, campo irrilevante.
     item = check_titolo_studio("Diploma di scuola superiore", "Laurea magistrale LM-18")
     assert item.esito == "ok"
+
+
+def test_check_titolo_studio_ok_livello_con_dominio() -> None:
+    # Stesso livello, campo coerente col dominio del profilo → ok
+    item = check_titolo_studio(
+        "Laurea in Ingegneria Informatica o equipollenti",
+        "Laurea magistrale LM-18 Informatica",
+        ["informatica"],
+    )
+    assert item.esito == "ok"
+
+
+def test_check_titolo_studio_warning_campo_estraneo() -> None:
+    # Livello adeguato ma campo estraneo (Scienze della Formazione Primaria) → warning
+    item = check_titolo_studio(
+        "Laurea in Scienze della Formazione Primaria (titolo abilitante)",
+        "Laurea magistrale LM-77 Management",
+        ["informatica", "ICT", "project management"],
+    )
+    assert item.esito == "warning"
+    assert item.nota is not None
+
+
+def test_check_titolo_studio_warning_senza_dominio() -> None:
+    # Nessuna parola di dominio fornita: non possiamo confermare il campo → warning
+    item = check_titolo_studio("Laurea in Giurisprudenza", "Laurea magistrale LM-18")
+    assert item.esito == "warning"
 
 
 def test_check_titolo_studio_fail() -> None:

@@ -63,7 +63,11 @@ _LIVELLI_TITOLO: dict[str, int] = {
 }
 
 
-def check_titolo_studio(richiesto: str | None, posseduto: str) -> CheckItem:
+def check_titolo_studio(
+    richiesto: str | None,
+    posseduto: str,
+    parole_dominio: list[str] | None = None,
+) -> CheckItem:
     if richiesto is None:
         return CheckItem(
             requisito="Titolo di studio",
@@ -85,12 +89,29 @@ def check_titolo_studio(richiesto: str | None, posseduto: str) -> CheckItem:
             esito="warning",
             nota=f"Verifica manuale: '{richiesto}'",
         )
-    if livello_posseduto >= livello_richiesto:
+    if livello_posseduto < livello_richiesto:
+        return CheckItem(
+            requisito="Titolo di studio",
+            esito="fail",
+            nota=f"Richiesto: '{richiesto}', posseduto: '{posseduto}'",
+        )
+
+    # Il livello accademico è adeguato. Per requisiti di livello diploma/licenza
+    # (livello_richiesto == 1) il grado basta: raramente vincolano un campo specifico
+    # e un titolo superiore li copre sempre. Per requisiti di livello laurea o superiore
+    # il grado da solo non basta: il bando può imporre una classe di laurea o un titolo
+    # abilitante specifico (es. Scienze della Formazione Primaria) estraneo al profilo.
+    # In quel caso confermiamo "ok" solo se il campo disciplinare del titolo richiesto è
+    # coerente col dominio del candidato, altrimenti degradiamo a "warning".
+    if livello_richiesto == 1:
+        return CheckItem(requisito="Titolo di studio", esito="ok")
+    dominio = [kw.lower() for kw in (parole_dominio or [])]
+    if dominio and any(kw in r_low for kw in dominio):
         return CheckItem(requisito="Titolo di studio", esito="ok")
     return CheckItem(
         requisito="Titolo di studio",
-        esito="fail",
-        nota=f"Richiesto: '{richiesto}', posseduto: '{posseduto}'",
+        esito="warning",
+        nota=f"Livello adeguato ma campo del titolo da verificare — richiesto: '{richiesto}'",
     )
 
 

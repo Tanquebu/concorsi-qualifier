@@ -36,7 +36,11 @@ def aggregate_checks(
 def match(bando: Bando, profilo: CandidatoProfilo) -> MatchResult:
     checks = [
         check_tipo_atto(bando.titolo, bando.testo_raw),
-        check_titolo_studio(bando.titolo_studio_richiesto, profilo.titolo_studio),
+        check_titolo_studio(
+            bando.titolo_studio_richiesto,
+            profilo.titolo_studio,
+            profilo.settori + profilo.parole_chiave,
+        ),
         check_area_geografica(bando.area_geografica, profilo.aree_preferite),
         check_scadenza(bando.scadenza),
         check_esclusioni(
