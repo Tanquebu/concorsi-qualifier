@@ -3,6 +3,10 @@ set -Eeuo pipefail
 cd /home/max/projects/concorsi-qualifier
 source .venv/bin/activate
 
+# stdout va in pipe verso tee: senza questo Python bufferizza i print e, se uno step
+# muore per SIGKILL, il log resta senza le righe di progresso che dicono dove si e' fermato.
+export PYTHONUNBUFFERED=1
+
 LOG="data/pipeline_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p data
 exec 1> >(tee -a "$LOG") 2>&1
