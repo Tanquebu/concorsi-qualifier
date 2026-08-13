@@ -78,6 +78,21 @@ CREATE TABLE IF NOT EXISTS user_actions (
 
 CREATE INDEX IF NOT EXISTS idx_user_actions_bando_id ON user_actions(bando_id);
 CREATE INDEX IF NOT EXISTS idx_user_actions_action   ON user_actions(action);
+
+-- Ledger dei bandi che non superano l'estrazione. Serve a smettere di ritentare ogni
+-- notte quelli rotti in modo deterministico, senza murare quelli che hanno solo
+-- incrociato un provider sovraccarico: attempts cresce solo sugli errori NON transitori.
+CREATE TABLE IF NOT EXISTS extraction_failures (
+    bando_id        TEXT PRIMARY KEY,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    transient_count INTEGER NOT NULL DEFAULT 0,
+    last_error      TEXT NOT NULL DEFAULT '',
+    last_transient  INTEGER NOT NULL DEFAULT 0,
+    first_seen_at   TEXT NOT NULL,
+    last_attempt_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_extraction_failures_attempts ON extraction_failures(attempts);
 """
 
 

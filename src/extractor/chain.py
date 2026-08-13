@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from typing import Any
@@ -7,6 +8,68 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from src.extractor.prompt import EXTRACTION_PROMPT, EXTRACTION_PROMPT_SIMPLIFIED
+
+logger = logging.getLogger(__name__)
+
+# Tetto al testo mandato al modello. Gli allegati InPA con elenchi e graduatorie arrivano a
+# 550k char (~330k token) contro i 128k di contesto del modello di default: senza taglio la
+# chiamata torna 502 "maximum context length" e il bando viene perso a ogni run. Il contenuto
+# utile (titolo, ente, scadenza, requisiti) sta in testa, le code sono tabelle di profili.
+# 150k char sono ~91k token: con i 16k di output richiesti si resta sotto il limite lasciando
+# margine al prompt. Override con EXTRACTION_MAX_INPUT_CHARS.
+_MAX_INPUT_CHARS = int(os.environ.get("EXTRACTION_MAX_INPUT_CHARS", "150000"))
+_TRUNCATION_MARK = "\n\n[...documento troncato per limite di contesto...]"
+
+# Errori imputabili al provider e non al documento: ritentarli alla run successiva ha senso.
+_TRANSIENT_MARKERS = (
+    "429",
+    "rate limit",
+    "rate-limited",
+    "engine_overloaded",
+    "overloaded",
+    "temporarily",
+    "timeout",
+    "timed out",
+    "502",
+    "503",
+    "504",
+    "connection error",
+    "connection reset",
+    "service unavailable",
+)
+
+# I tipi dell'SDK openai non ripetono sempre il motivo nel messaggio (un RateLimitError puo'
+# arrivare con solo "Provider returned error"): il nome della classe e' gia' la diagnosi.
+_TRANSIENT_TYPES = (
+    "RateLimitError",
+    "APITimeoutError",
+    "APIConnectionError",
+    "InternalServerError",
+    "ServiceUnavailableError",
+    "TimeoutError",
+    "ConnectionError",
+)
+
+
+def is_transient_error(exc: BaseException | None) -> bool:
+    """True se l'errore, o una delle sue cause, dipende dal provider e non dal documento."""
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if type(exc).__name__ in _TRANSIENT_TYPES:
+            return True
+        if any(marker in str(exc).lower() for marker in _TRANSIENT_MARKERS):
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+def truncate_for_context(testo: str) -> str:
+    """Taglia il testo alla lunghezza massima che il modello riesce ad accettare."""
+    if len(testo) <= _MAX_INPUT_CHARS:
+        return testo
+    logger.warning("Testo troncato per il contesto: %d char -> %d", len(testo), _MAX_INPUT_CHARS)
+    return testo[:_MAX_INPUT_CHARS] + _TRUNCATION_MARK
 
 
 def _get_llm() -> ChatOpenAI:
@@ -55,7 +118,7 @@ def run_extraction(testo: str, data_pubblicazione: str = "") -> tuple[dict[str, 
     llm = _get_llm()
     last_exc: Exception = RuntimeError("Estrazione fallita")
     data_pub = data_pubblicazione or "non disponibile"
-    invoke_input = {"testo_bando": testo, "data_pubblicazione": data_pub}
+    invoke_input = {"testo_bando": truncate_for_context(testo), "data_pubblicazione": data_pub}
 
     for prompt in (EXTRACTION_PROMPT, EXTRACTION_PROMPT_SIMPLIFIED):
         try:

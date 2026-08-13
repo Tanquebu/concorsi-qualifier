@@ -8,6 +8,7 @@ from pathlib import Path
 import src.env  # noqa: F401
 from src.db import init_db
 from src.extractor import extract
+from src.extractor.failures import MAX_ATTEMPTS, blocked_ids, clear_failure, record_failure
 from src.parser import parse
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -25,6 +26,11 @@ def main() -> None:
     parser.add_argument("--raw", default="data/raw", type=Path, metavar="DIR")
     parser.add_argument("--db", default="concorsi.db", type=Path, metavar="PATH")
     parser.add_argument("--force", action="store_true", help="Ri-estrai anche i bandi già in DB")
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Ignora il ledger e ritenta anche i bandi che hanno esaurito i tentativi",
+    )
     args = parser.parse_args()
 
     meta_files = sorted(args.raw.glob("*.meta.json"))
@@ -34,10 +40,14 @@ def main() -> None:
 
     totale = len(meta_files)
     print(f"File da processare: {totale}")
-    ok = err = skip = 0
+    ok = err = skip = bloccati = 0
 
     init_db(args.db)
     with sqlite3.connect(args.db) as conn:
+        blocked = set() if args.retry_failed else blocked_ids(conn)
+        if blocked:
+            print(f"Bloccati dal ledger ({MAX_ATTEMPTS} tentativi falliti): {len(blocked)}")
+
         for i, meta_path in enumerate(meta_files, 1):
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             file_hash = meta_path.stem.removesuffix(".meta")
@@ -47,6 +57,10 @@ def main() -> None:
 
             if not args.force and _already_extracted(file_hash, conn):
                 skip += 1
+                continue
+
+            if file_hash in blocked:
+                bloccati += 1
                 continue
 
             if not raw_file.exists():
@@ -75,12 +89,19 @@ def main() -> None:
                     conn=conn,
                 )
                 print(f"  {prefix} OK   {bando.titolo[:60]!r}")
+                clear_failure(conn, file_hash)
                 ok += 1
             except Exception as exc:
-                print(f"  {prefix} ERR  {exc}")
+                transient = record_failure(conn, file_hash, exc)
+                # exc e' quasi sempre il RuntimeError generico della chain: la causa vera
+                # (contesto superato, 429 del provider, JSON malformato) sta in __cause__.
+                cause = exc.__cause__ or exc.__context__ or exc
+                tipo = "transitorio" if transient else "documento"
+                print(f"  {prefix} ERR  [{tipo}] {type(cause).__name__}: {str(cause)[:200]}")
                 err += 1
 
-    print(f"\nEstrazione: {ok} ok, {skip} saltati, {err} errori")
+    coda = f", {bloccati} bloccati" if bloccati else ""
+    print(f"\nEstrazione: {ok} ok, {skip} saltati{coda}, {err} errori")
 
 
 if __name__ == "__main__":
