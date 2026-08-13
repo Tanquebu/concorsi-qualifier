@@ -23,12 +23,48 @@ def _address_space_bytes() -> int:
         return 0
 
 
+# Un PDF scansionato puo' restituire qualche briciola di testo (intestazioni, timbri
+# digitali) senza contenere nulla del bando: 1279 char su 8 pagine nel caso che ha fatto
+# emergere il problema. Accettarlo come estrazione riuscita significa mandare all'LLM un
+# testo vuoto e ottenere un record plausibile ma privo di contenuto, che non fallisce mai
+# e quindi non si nota. Le due soglie vanno in AND: quella per pagina protegge i documenti
+# corti ma densi, quella assoluta evita di dirottare su OCR (fermo a 10 pagine) documenti
+# che hanno gia' piu' testo di quanto l'OCR potrebbe produrne.
+# Misura su 89 allegati reali: i sospetti stanno sotto 1300 char totali e 285 char/pagina,
+# il documento testuale piu' povero e' a 9928 char e 1479 char/pagina.
+_MIN_CHARS_TOTAL = int(os.environ.get("PDF_MIN_CHARS_TOTAL", "3000"))
+_MIN_CHARS_PER_PAGE = int(os.environ.get("PDF_MIN_CHARS_PER_PAGE", "500"))
+
+
 def extract_text_pdf(file_path: Path) -> str | None:
     """Estrae testo da PDF con pdfplumber, fallback pypdf. Restituisce None se fallisce."""
     text = _run_isolated(_try_pdfplumber, file_path)
     if text:
         return text
     return _run_isolated(_try_pypdf, file_path)
+
+
+def page_count(file_path: Path) -> int:
+    """Numero di pagine del PDF, 0 se illeggibile."""
+    try:
+        from pypdf import PdfReader
+
+        return len(PdfReader(str(file_path)).pages)
+    except Exception:
+        return 0
+
+
+def has_text_layer(file_path: Path, text: str | None) -> bool:
+    """True se il testo estratto è abbastanza denso da essere il contenuto del documento."""
+    text = (text or "").strip()
+    if not text:
+        return False
+    if len(text) >= _MIN_CHARS_TOTAL:
+        return True
+    pages = page_count(file_path)
+    if pages <= 0:
+        return True  # pagine ignote: nessun elemento per dubitare del testo estratto
+    return len(text) >= _MIN_CHARS_PER_PAGE * pages
 
 
 def _run_isolated(func, file_path: Path) -> str | None:

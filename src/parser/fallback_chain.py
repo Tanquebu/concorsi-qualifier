@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Literal
 
 from src.parser.pdf_ocr import extract_text_ocr
-from src.parser.pdf_text import extract_text_pdf
+from src.parser.pdf_text import extract_text_pdf, has_text_layer
 
 _OCR_QUEUE = Path("data/ocr_queue.txt")
 
@@ -35,12 +35,16 @@ def run_fallback_chain(file_path: Path) -> ParseResult:
 
     if suffix == ".pdf":
         text = extract_text_pdf(file_path)
-        if text:
+        if text and has_text_layer(file_path, text):
             return ParseResult(testo=text, parse_method="pdf_text")
 
-        text = extract_text_ocr(file_path)
+        ocr_text = extract_text_ocr(file_path)
+        if ocr_text:
+            return ParseResult(testo=ocr_text, parse_method="pdf_ocr")
+
+        # OCR fallito: le briciole del layer testuale restano meglio di niente
         if text:
-            return ParseResult(testo=text, parse_method="pdf_ocr")
+            return ParseResult(testo=text, parse_method="pdf_text")
 
     return ParseResult(testo="", parse_method="parse_failed")
 
@@ -60,7 +64,10 @@ def _parse_html(file_path: Path) -> ParseResult:
             pdf_text = extract_text_pdf(allegato) or ""
             if pdf_text:
                 text = text + "\n\n--- ALLEGATO PDF ---\n\n" + pdf_text
-            else:
+            # Il testo troppo rado vale come assente: l'allegato è una scansione e il
+            # contenuto del bando lo si recupera solo con l'OCR (ocr_worker riestrae e
+            # sostituisce il record). Le briciole intanto restano nel testo.
+            if not has_text_layer(allegato, pdf_text):
                 _enqueue_ocr(file_path.stem)
 
         return ParseResult(testo=text, parse_method="html")
