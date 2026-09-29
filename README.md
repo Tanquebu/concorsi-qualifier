@@ -249,3 +249,24 @@ I check sono: titolo di studio, area geografica, scadenza, requisiti escludenti,
 ## Architettura
 
 Vedi [`CLAUDE.md`](CLAUDE.md) per lo stack completo e i principi architetturali.
+
+### OCR: memoria e coda in attesa
+
+Il worker verifica la presenza del bando nel database **prima** di eseguire OCR.
+Gli ID assenti vengono spostati in `data/ocr_waiting_for_db.txt`, senza eliminare
+PDF o HTML. A ogni avvio vengono riammessi nella coda attiva se il record DB è
+presente. Gli altri errori restano nella coda attiva per un successivo tentativo.
+Per riconciliare soltanto le code, senza OCR o chiamate LLM:
+
+```bash
+.venv/bin/python ocr_worker.py --reconcile-only
+```
+
+Eseguire questo comando senza altri worker o produttori della coda attivi.
+L'OCR converte una pagina alla volta (massimo le prime 10, risoluzione invariata),
+usando immagini PNG temporanee in `data/ocr_tmp/` e un solo thread di conversione.
+Ogni immagine viene rimossa dopo la pagina, anche in caso di errore gestito.
+La directory è su disco: `/tmp` sull'host è invece tmpfs e consumerebbe RAM.
+Questo riduce il picco di memoria, ma non impone un limite rigido in MB; una singola
+pagina molto grande può ancora essere costosa. Un arresto forzato può lasciare
+file temporanei residui. Un worker già avviato userà le modifiche dal prossimo avvio.
