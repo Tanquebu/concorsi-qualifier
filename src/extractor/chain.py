@@ -94,6 +94,29 @@ def _extract_json_from_text(text: str) -> dict[str, Any]:
     return json.loads(text)  # type: ignore[no-any-return]
 
 
+# Riga "Sede:" dell'header che il collector InPA mette in testa al testo. Il LLM la copia quasi
+# sempre alla lettera in area_geografica, ma a volte restituisce null pur avendola davanti.
+_SEDE_HEADER_RE = re.compile(r"^Sede:[ \t]*\n?[ \t]*(\S[^\n]*)$", re.MULTILINE)
+_SEDE_HEADER_WINDOW = 2000
+# Record raccolti con una versione precedente del collector: le sedi sono repr di dict Python.
+_SEDE_DENOMINAZIONE_RE = re.compile(r"'(?:provincia|regione)Denominazione': '([^']+)'")
+
+
+def _area_from_header(testo: str) -> str | None:
+    """Ricava la sede dalla riga "Sede:" dell'header InPA, se presente."""
+    match = _SEDE_HEADER_RE.search(testo[:_SEDE_HEADER_WINDOW])
+    if not match:
+        return None
+    value = match.group(1).strip()
+    if value.endswith(":"):
+        # Sede vuota: la regex ha agganciato l'etichetta della riga successiva
+        return None
+    if "Denominazione'" in value:
+        nomi = list(dict.fromkeys(_SEDE_DENOMINAZIONE_RE.findall(value)))
+        return ", ".join(nomi) or None
+    return value
+
+
 def _compute_confidence(data: dict[str, Any]) -> float:
     """Proporzione di campi opzionali non-None su totale campi opzionali."""
     optional_fields = [
@@ -126,6 +149,8 @@ def run_extraction(testo: str, data_pubblicazione: str = "") -> tuple[dict[str, 
             raw = response.content
             content = raw if isinstance(raw, str) else str(raw)
             data: dict[str, Any] = _extract_json_from_text(content)
+            if not data.get("area_geografica"):
+                data["area_geografica"] = _area_from_header(testo)
             confidence = _compute_confidence(data)
             return data, confidence
         except Exception as exc:

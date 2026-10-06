@@ -8,7 +8,12 @@ import pytest
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
-from src.extractor.chain import _compute_confidence, _extract_json_from_text, run_extraction
+from src.extractor.chain import (
+    _area_from_header,
+    _compute_confidence,
+    _extract_json_from_text,
+    run_extraction,
+)
 from src.extractor.prompt import EXTRACTION_PROMPT, EXTRACTION_PROMPT_SIMPLIFIED
 
 _VALID_JSON = json.dumps(
@@ -124,6 +129,43 @@ def test_run_extraction_retry_on_invalid() -> None:
     ):
         data, confidence = run_extraction("Testo bando")
     assert data["titolo"] == "Concorso Informatici"
+
+
+_INPA_HEADER = (
+    "CONCORSO PUBBLICO PER ESAMI - ISTRUTTORE AMMINISTRATIVO CONTABILE\n"
+    "Ente:\n Provincia di Sondrio\nSede:\n Lombardia, Sondrio\nPosti:\n 1\n"
+)
+
+
+def test_run_extraction_area_fallback_da_header() -> None:
+    risposta = json.dumps({**json.loads(_VALID_JSON), "area_geografica": None})
+    with patch("src.extractor.chain._get_llm", return_value=_make_llm(risposta)):
+        data, _ = run_extraction(_INPA_HEADER)
+    assert data["area_geografica"] == "Lombardia, Sondrio"
+
+
+def test_run_extraction_area_llm_ha_precedenza() -> None:
+    with patch("src.extractor.chain._get_llm", return_value=_make_llm(_VALID_JSON)):
+        data, _ = run_extraction(_INPA_HEADER)
+    assert data["area_geografica"] == "Roma"
+
+
+def test_area_from_header_sede_vuota() -> None:
+    assert _area_from_header("Ente:\n Comune\nSede:\nPosti:\n 1\n") is None
+
+
+def test_area_from_header_assente() -> None:
+    assert _area_from_header("Bando senza header InPA") is None
+
+
+def test_area_from_header_formato_dict_legacy() -> None:
+    testo = (
+        "Sede:\n {'regioneId': '15', 'regioneDenominazione': 'Sicilia', "
+        "'provinciaCodice': None, 'provinciaDenominazione': None}, "
+        "{'regioneId': '15', 'regioneDenominazione': 'Sicilia', "
+        "'provinciaCodice': 'CT', 'provinciaDenominazione': 'Catania'}\nPosti:\n 1\n"
+    )
+    assert _area_from_header(testo) == "Sicilia, Catania"
 
 
 def test_run_extraction_raises_after_all_fail() -> None:
